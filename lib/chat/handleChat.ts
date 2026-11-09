@@ -4,15 +4,18 @@
 //   3. clean the history (never trust the client)
 //   4. retrieve FAQ entries
 //   5. no FAQ entry matches at all -> fixed out-of-scope reply, no AI call
-//   6. AI reply, or the FAQ answer verbatim when there is no provider
-//   7. any provider failure -> the FAQ answer verbatim
+//   6. AI reply (ANY match reaches the model; its system prompt refuses off-topic questions)
+//   7. no provider, provider failure or empty reply (the FALLBACK paths) -> the best FAQ
+//      answer verbatim, but only for a confident match (score >= OUT_OF_SCOPE_THRESHOLD);
+//      a weak match gets the out-of-scope reply instead of a probably wrong answer
 // LOGGING: the only log is ONE console.warn when the provider fails (kind and
 // fixed message only). Never message text, history, FAQ text, error text or stack.
 
 import { ProviderError, type ChatMessage, type ChatProvider } from "@/lib/ai/provider";
+import { FAQ_GROUPS } from "@/lib/faq/data";
 import { redactPII } from "@/lib/guard/redactPII";
 import { checkRateLimit } from "@/lib/guard/rateLimit";
-import { retrieve } from "@/lib/faq/retrieve";
+import { retrieve, OUT_OF_SCOPE_THRESHOLD } from "@/lib/faq/retrieve";
 
 export type ChatSource = "ai" | "faq-fallback" | "out-of-scope";
 
@@ -41,9 +44,14 @@ export const SYSTEM_PROMPT = [
   "Keep answers short: one to three sentences, in English.",
 ].join("\n");
 
+// Used for "nothing matches" and for a weak match on the fallback paths.
 const OUT_OF_SCOPE_REPLY =
-  "Sorry, I can only help with this clinic's services, opening hours, booking, costs, preparation and aftercare. " +
-  "This is a demo clinic. For anything else, please leave your contact details on the contact page and the team can follow up.";
+  "Sorry, I can only help with this demo clinic's FAQ topics. " +
+  `I can help with: ${FAQ_GROUPS.map((g) => g.toLowerCase()).join(", ")}. ` +
+  "For anything else, please leave your contact details on the contact page and the team can follow up.";
+
+/** A ProviderError message is logged only if it looks like one of our short fixed strings. */
+const SAFE_LOG_MESSAGE = /^[\w .:-]{1,60}$/;
 
 const RATE_LIMITED_ERROR = "Please wait a moment before sending another message.";
 
@@ -109,22 +117,23 @@ export async function handleChat(
   // 4. Retrieve.
   const matches = retrieve(question, FAQ_ENTRIES_FOR_AI);
 
-  // 5. Nothing matches: fixed reply, no AI call. OUT_OF_SCOPE_THRESHOLD is
-  // intentionally NOT used (see CLAUDE.md "Chat routing"); the system prompt refuses off-topic questions.
+  // 5. Nothing matches: fixed reply, no AI call. For the MODEL path the threshold is
+  // intentionally not used (see CLAUDE.md "Chat routing"); any match reaches the model.
   if (matches.length === 0) {
     return { status: 200, body: { reply: OUT_OF_SCOPE_REPLY, source: "out-of-scope" } };
   }
 
-  const fallback: ChatResult = {
-    status: 200,
-    body: { reply: matches[0].entry.answer, source: "faq-fallback" },
-  };
+  // Fallback paths only: a weak match is refused instead of answered with a probably wrong FAQ entry.
+  const fallback: ChatResult =
+    matches[0].score >= OUT_OF_SCOPE_THRESHOLD
+      ? { status: 200, body: { reply: matches[0].entry.answer, source: "faq-fallback" } }
+      : { status: 200, body: { reply: OUT_OF_SCOPE_REPLY, source: "out-of-scope" } };
 
-  // 6. No provider: the best FAQ answer, verbatim.
+  // 6. No provider (AI_MODE=off is not a failure, so nothing is logged).
   if (!deps.provider) return fallback;
 
-  // 7. Any failure or empty reply: the same FAQ answer, plus one warn with a fixed text.
-  // The thrown value is never logged, only the kind and fixed message of a ProviderError.
+  // 7. Failure or empty reply: the fallback result, computed above, is returned whatever happens to the log.
+  let failure: string;
   try {
     const reply = await deps.provider.complete({
       system: SYSTEM_PROMPT,
@@ -136,13 +145,20 @@ export async function handleChat(
     });
     const text = typeof reply === "string" ? reply.trim() : "";
     if (text) return { status: 200, body: { reply: text, source: "ai" } };
-    console.warn("[chat] provider failure: empty reply");
+    failure = "empty reply";
   } catch (e) {
-    console.warn(
+    // Only the kind, and the message only when it is a short plain fixed string.
+    failure =
       e instanceof ProviderError
-        ? `[chat] provider failure: ${e.kind} (${e.message})`
-        : "[chat] provider failure: unexpected",
-    );
+        ? SAFE_LOG_MESSAGE.test(e.message)
+          ? `${e.kind} (${e.message})`
+          : e.kind
+        : "unexpected";
+  }
+  try {
+    console.warn(`[chat] provider failure: ${failure}`);
+  } catch {
+    // Logging must never change the reply.
   }
   return fallback;
 }

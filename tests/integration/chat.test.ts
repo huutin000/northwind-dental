@@ -13,7 +13,7 @@ import {
 import { createMockProvider } from "@/lib/ai/mockProvider";
 import { ProviderError, type ChatProvider } from "@/lib/ai/provider";
 import { checkRateLimit } from "@/lib/guard/rateLimit";
-import { FAQ } from "@/lib/faq/data";
+import { FAQ, FAQ_GROUPS } from "@/lib/faq/data";
 import { retrieve, OUT_OF_SCOPE_THRESHOLD } from "@/lib/faq/retrieve";
 import { POST } from "@/app/api/chat/route";
 
@@ -153,12 +153,56 @@ describe("handleChat: routing (no threshold gate; only a no-match is out-of-scop
     expect(p.calls).toHaveLength(1);
   });
 
-  it("provider null with a low-score match -> verbatim best answer as faq-fallback", async () => {
+  // CHANGED (owner decision): this test used to expect the verbatim best answer for a low-score
+  // match with provider null. Fallback paths now refuse a weak match (score < threshold).
+  it("provider null with a low-score match -> out-of-scope, not the weak best answer", async () => {
     const best = retrieve(LONG_QUESTIONS[2], 1)[0];
-    expect(best.score).toBeLessThan(OUT_OF_SCOPE_THRESHOLD); // the case the old gate refused
+    expect(best.score).toBeLessThan(OUT_OF_SCOPE_THRESHOLD);
     const b = ok(await chat(LONG_QUESTIONS[2], [], null));
-    expect(b.source).toBe("faq-fallback");
-    expect(b.reply).toBe(best.entry.answer);
+    expect(b.source).toBe("out-of-scope");
+    expect(b.reply).not.toBe(best.entry.answer);
+  });
+
+  const ROMAN = "Write a poem about the first Roman emperor";
+  const throwing: ChatProvider = { complete: async () => { throw new Error("x"); } };
+
+  it("off-topic with a weak match reaches the model; refusing it is the system prompt's job", async () => {
+    const p = createMockProvider();
+    expect(ok(await chat(ROMAN, [], p)).source).toBe("ai");
+    expect(p.calls).toHaveLength(1);
+  });
+
+  it("off-topic with a weak match: provider null and a throwing provider -> out-of-scope with topics", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const provider of [null, throwing]) {
+      const b = ok(await chat(ROMAN, [], provider));
+      expect(b.source).toBe("out-of-scope");
+      expect(b.reply).not.toBe(FAQ.find((e) => e.id === "first-visit")!.answer);
+      for (const g of FAQ_GROUPS) expect(b.reply).toContain(g.toLowerCase());
+      expect(b.reply).toMatch(/demo/i);
+      expect(b.reply).toMatch(/contact/i);
+    }
+  });
+
+  it("a confident match keeps the verbatim answer in fallback mode", async () => {
+    expect(ok(await chat(HOURS_Q, [], null)).reply).toBe(HOURS_ANSWER);
+  });
+
+  // FIXTURE: real fallback-mode behaviour of five long, realistic questions. A keyword ratio
+  // cannot separate long multi-topic questions (each extra word lowers the score), so all five
+  // score below 0.35 and are refused with the topic list when the model is not used. With a
+  // working model they still reach it (see the "ai" test above); the model path is unaffected.
+  it("five long realistic questions: fallback mode (provider null or failing) -> out-of-scope with topics", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const q of LONG_QUESTIONS) {
+      const score = retrieve(q, 1)[0].score;
+      for (const provider of [null, throwing]) {
+        const expected = score >= OUT_OF_SCOPE_THRESHOLD ? "faq-fallback" : "out-of-scope";
+        const b = ok(await chat(q, [], provider));
+        expect(b.source, q).toBe(expected);
+        if (expected === "out-of-scope") expect(b.reply).toContain("opening hours and booking");
+      }
+    }
   });
 });
 
@@ -178,12 +222,13 @@ describe("handleChat: question length after redaction", () => {
     expect(p.calls[0].question).toBe(message);
   });
 
-  it("an email near the boundary leaves no fragment", async () => {
+  it("NFKC-expanded text before an email: question <= 500 and no email fragment", async () => {
+    // 27 x U+FDFA expand to 486 chars, so the email starts at ~493 and would straddle 500.
     const p = createMockProvider();
-    await chat("hours " + "a".repeat(440) + " john.doe@example.com tail", [], p);
+    await chat("hours " + "ﷺ".repeat(27) + " john.doe@example.com tail", [], p);
     const q = p.calls[0].question;
     expect(q.length).toBeLessThanOrEqual(500);
-    for (const frag of ["john", "@", "example"]) expect(q).not.toContain(frag);
+    for (const frag of ["john", "doe", "@", "example"]) expect(q).not.toContain(frag);
   });
 });
 
@@ -248,6 +293,15 @@ describe("handleChat: PII and history", () => {
     const p = createMockProvider();
     await chat(HOURS_Q, [{ role: "user", content: "x".repeat(10_000) }], p);
     expect(p.calls[0].history[0].content).toHaveLength(500);
+  });
+
+  it("history: NFKC-expanded text before an email: <= 500 and no email fragment", async () => {
+    const p = createMockProvider();
+    const content = "ﷺ".repeat(27) + " john.doe@example.com " + "tail ".repeat(20);
+    await chat(HOURS_Q, [{ role: "user", content }], p);
+    const c = p.calls[0].history[0].content;
+    expect(c.length).toBeLessThanOrEqual(500);
+    for (const frag of ["john", "doe", "@", "example"]) expect(c).not.toContain(frag);
   });
 
   it("redacts before truncating: no email fragment at the 500 boundary", async () => {
@@ -414,6 +468,50 @@ describe("handleChat: prompt and privacy", () => {
     await chat(HOURS_Q, [], { complete: async () => "  " });
     expect(total(spies)).toBe(1);
     expect(spies[2].mock.calls[0]).toEqual(["[chat] provider failure: empty reply"]);
+  });
+});
+
+describe("handleChat: log hygiene and resilience", () => {
+  const warnWith = async (provider: ChatProvider) => {
+    const w = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await chat(`${HOURS_Q} zebra`, [], provider);
+    return { w, r };
+  };
+  const failing = (kind: "upstream" | "config" | "rate_limit", msg: string): ChatProvider => ({
+    complete: async () => { throw new ProviderError(kind, msg); },
+  });
+
+  it("an unsafe ProviderError message is not logged; only the kind", async () => {
+    for (const msg of ["user said a@b.co", "x\nFAKE LOG LINE", "m".repeat(200), "café déjà", ""]) {
+      const { w } = await warnWith(failing("upstream", msg));
+      expect(w).toHaveBeenCalledTimes(1);
+      expect(w.mock.calls[0]).toEqual(["[chat] provider failure: upstream"]);
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("the real fixed messages keep their message", async () => {
+    for (const [kind, msg] of [["upstream", "groq http 500"], ["upstream", "groq reply truncated"], ["config", "groq api key missing"]] as const) {
+      const { w } = await warnWith(failing(kind, msg));
+      expect(w.mock.calls[0]).toEqual([`[chat] provider failure: ${kind} (${msg})`]);
+      expect(String(w.mock.calls[0][0])).not.toMatch(/\n|zebra/);
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("a throwing console.warn never changes the reply, for every failure kind", async () => {
+    const providers: ChatProvider[] = [
+      failing("upstream", "groq http 500"),
+      failing("rate_limit", "x\ny"),
+      { complete: async () => { throw new Error("boom"); } },
+      { complete: async () => "   " },
+    ];
+    vi.spyOn(console, "warn").mockImplementation(() => { throw new Error("console broke"); });
+    for (const p of providers) {
+      const r = await chat(HOURS_Q, [], p);
+      expect(r.status).toBe(200);
+      expect(ok(r)).toEqual({ reply: HOURS_ANSWER, source: "faq-fallback" });
+    }
   });
 });
 
