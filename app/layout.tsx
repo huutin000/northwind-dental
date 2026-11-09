@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import DemoBanner from "@/components/DemoBanner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ChatWidget from "@/components/ChatWidget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -48,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <Footer />
-        {/* TODO(Task 7): mount <ChatWidget /> here (floating chat widget). Intentionally empty for now. */}
+        <ChatWidget />
       </body>
     </html>
   );
