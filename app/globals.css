@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/*
+  Design tokens (light theme only). Every color on the site comes from here.
+  Contrast, measured with the WCAG formula:
+  - ink on canvas 13.9, on tint 13.0 | muted on canvas 8.0, on tint 7.5
+  - brand on canvas 5.9, on tint 5.6 | canvas text on brand 5.9, on brand-strong 7.6
+  - edge (form borders) on canvas 4.3, on tint 4.1 (needs 3)
+  - notice-ink on notice 13.5 | footer-ink on footer 12.1
+  wash and accent are decorative (illustrations only); never put text on accent.
+*/
+@theme {
+  --color-canvas: #ffffff;
+  --color-ink: #082f49;
+  --color-muted: #35546a;
+  --color-brand: #0369a1;
+  --color-brand-strong: #075985;
+  --color-tint: #f0f9ff;
+  --color-tint-strong: #e0f2fe;
+  --color-wash: #bae6fd;
+  --color-accent: #38bdf8;
+  --color-line: #bae6fd;
+  --color-edge: #4f7f9c;
+  --color-notice: #fef3c7;
+  --color-notice-ink: #451a03;
+  --color-footer: #082f49;
+  --color-footer-ink: #e0f2fe;
+  --color-footer-muted: #bae6fd;
+  --color-disabled: #475569;
+  --font-heading: var(--font-bricolage), var(--font-geist-sans), Arial, sans-serif;
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+/*
+  Layout tokens.
+  --sticky-offset: height of the header where it is sticky (md and up only,
+    0 below md where it scrolls away); used as scroll-padding-top so anchors
+    and the skip-link target are not hidden under it.
+  Chat slot (Task 7): ChatWidget mounts fixed at bottom-right.
+    --chat-size: launcher button size (56-64 px)
+    --chat-offset: gap from the viewport edges
+    --chat-z: stacking level (above the sticky header, which is 30)
+    --chat-reserve: bottom padding the footer keeps free so nothing is covered.
+*/
+:root {
+  --sticky-offset: 0rem;
+  --chat-size: 3.5rem;
+  --chat-offset: 1rem;
+  --chat-z: 60;
+  --chat-reserve: calc(var(--chat-size) + var(--chat-offset) * 2);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --sticky-offset: 5rem;
+  }
+}
+
+html {
+  scroll-padding-top: var(--sticky-offset);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Gentle sparkle pulse on decorative illustrations. Off for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .sparkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sparkle-pulse 4s ease-in-out infinite;
+  }
+  .sparkle-late {
+    animation-delay: 1.6s;
+  }
+}
+
+@keyframes sparkle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}
