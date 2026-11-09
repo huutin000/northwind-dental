@@ -19,13 +19,33 @@ export type RateLimitResult = { allowed: boolean; retryAfterSeconds: number };
 // How often (at most) the memory store scans for expired keys.
 const SWEEP_INTERVAL_MS = 60_000;
 
+// At most how often a FULL store sweeps for expired keys before it evicts.
+const CAP_SWEEP_INTERVAL_MS = 1_000;
+
+// Default hard cap on the number of keys the memory store holds.
+const DEFAULT_MAX_KEYS = 10_000;
+
 // In-memory store. It is per server instance: serverless instances do not
 // share it, so it is only a best-effort fallback (spec 6.1).
-export function createMemoryCounterStore(): CounterStore {
+//
+// `maxKeys` is a hard cap, so a flood of new keys cannot grow memory without
+// bound. When a NEW key arrives and the Map is full, expired entries are swept
+// first; if it is still full, the oldest entry (Map insertion order) is evicted.
+// This FAILS OPEN: an evicted key's counter restarts at 1, so a client could get
+// extra calls. That is acceptable for a best-effort fallback: the alternative is
+// unbounded memory, and a shared store (Task 8) is the real limiter.
+export function createMemoryCounterStore(
+  options: { maxKeys?: number } = {},
+): CounterStore {
+  const maxKeys = options.maxKeys ?? DEFAULT_MAX_KEYS;
+  if (!Number.isInteger(maxKeys) || maxKeys < 1) {
+    throw new RangeError(`"maxKeys" must be a positive integer, got ${maxKeys}`);
+  }
   // A Map, not a plain object: keys such as "__proto__" or "constructor" are
   // then ordinary keys.
   const windows = new Map<string, { count: number; expiresAt: number }>();
   let lastSweep = Date.now(); // Date.now() so fake timers work in tests
+  let lastCapSweep = Number.NEGATIVE_INFINITY; // the first full-store sweep is always allowed
 
   return {
     async incr(key, windowSeconds) {
@@ -33,11 +53,14 @@ export function createMemoryCounterStore(): CounterStore {
 
       // Cleanup: at most once per SWEEP_INTERVAL_MS, delete every expired
       // entry. Without this, keys that are never seen again would stay forever.
-      if (now - lastSweep >= SWEEP_INTERVAL_MS) {
-        lastSweep = now;
+      const sweep = () => {
         for (const [k, w] of windows) {
           if (w.expiresAt <= now) windows.delete(k);
         }
+      };
+      if (now - lastSweep >= SWEEP_INTERVAL_MS) {
+        lastSweep = now;
+        sweep();
       }
 
       // No JS await between read and write, so simultaneous calls cannot
@@ -45,6 +68,22 @@ export function createMemoryCounterStore(): CounterStore {
       let w = windows.get(key);
       if (!w || w.expiresAt <= now) {
         // Missing or expired: start a new window at this moment.
+        // Delete first so the re-inserted key moves to the END of the Map's
+        // insertion order, which is the "newest" end for eviction.
+        windows.delete(key);
+        if (windows.size >= maxKeys) {
+          // Free expired entries before sacrificing a live one. The sweep walks
+          // the whole Map, so it runs at most once per CAP_SWEEP_INTERVAL_MS:
+          // a flood of new keys cannot make every request pay for a full scan.
+          if (now - lastCapSweep >= CAP_SWEEP_INTERVAL_MS) {
+            lastCapSweep = now;
+            sweep();
+          }
+          if (windows.size >= maxKeys) {
+            // Still full: drop the oldest entry (first key in insertion order).
+            windows.delete(windows.keys().next().value as string);
+          }
+        }
         w = { count: 0, expiresAt: now + windowSeconds * 1000 };
         windows.set(key, w);
       }

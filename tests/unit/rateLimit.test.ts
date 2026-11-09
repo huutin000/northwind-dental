@@ -140,4 +140,84 @@ describe("createMemoryCounterStore", () => {
     // Behaviour is still right: an old key starts a fresh window.
     expect(await store.incr("old-0", 10)).toBe(1);
   });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects maxKeys %s with RangeError",
+    (bad) => {
+      expect(() => createMemoryCounterStore({ maxKeys: bad })).toThrow(RangeError);
+    },
+  );
+
+  it("evicts the oldest key when full; the others keep counting", async () => {
+    const small = createMemoryCounterStore({ maxKeys: 3 });
+    for (const k of ["a", "b", "c"]) expect(await small.incr(k, 60)).toBe(1);
+    expect(await small.incr("d", 60)).toBe(1); // new key, store full -> evicts a
+    expect(await small.incr("b", 60)).toBe(2);
+    expect(await small.incr("c", 60)).toBe(2);
+    expect(await small.incr("d", 60)).toBe(2);
+    expect(await small.incr("a", 60)).toBe(1); // a restarted (fails open)
+  });
+
+  it("sweeps expired entries before evicting a live one", async () => {
+    const small = createMemoryCounterStore({ maxKeys: 3 });
+    // The expired key sits in the MIDDLE, so plain oldest-first eviction
+    // would remove live1 and this test would fail.
+    await small.incr("live1", 60);
+    await small.incr("short", 5);
+    await small.incr("live2", 60);
+    vi.advanceTimersByTime(5_000); // "short" expired; below the periodic sweep interval
+    expect(await small.incr("new", 60)).toBe(1); // full -> sweep frees "short"
+    expect(await small.incr("live1", 60)).toBe(2);
+    expect(await small.incr("live2", 60)).toBe(2);
+    expect(await small.incr("new", 60)).toBe(2);
+    expect(await small.incr("short", 5)).toBe(1); // it was gone
+  });
+
+  it("treats a restarted window as the newest key for eviction order", async () => {
+    // Below the cap, so the cap-time sweep cannot hide a missing re-insert.
+    const small = createMemoryCounterStore({ maxKeys: 3 });
+    await small.incr("a", 5);
+    await small.incr("b", 60);
+    vi.advanceTimersByTime(5_000); // a expired
+    expect(await small.incr("a", 60)).toBe(1); // restart: a must move behind b
+    expect(await small.incr("c", 60)).toBe(1); // size 3, not over the cap
+    expect(await small.incr("d", 60)).toBe(1); // full -> evicts b (oldest), not a
+    expect(await small.incr("a", 60)).toBe(2);
+    expect(await small.incr("c", 60)).toBe(2);
+    expect(await small.incr("d", 60)).toBe(2);
+    expect(await small.incr("b", 60)).toBe(1);
+  });
+
+  // Fill a 2-key store so "l" is the oldest live key and "s" (0.1 s window) the
+  // newest. The cap-time sweep ran once, at the start instant.
+  async function fullStoreWithExpiringKey() {
+    const small = createMemoryCounterStore({ maxKeys: 2 });
+    await small.incr("p", 60);
+    await small.incr("q", 60);
+    await small.incr("l", 60); // full -> sweep (nothing expired), evicts p
+    await small.incr("s", 0.1); // full -> sweep skipped (same instant), evicts q
+    return small;
+  }
+
+  it("runs the cap-time sweep at most once per second", async () => {
+    const small = await fullStoreWithExpiringKey();
+    vi.advanceTimersByTime(200); // "s" expired, but the last sweep was < 1 s ago
+    expect(await small.incr("n", 60)).toBe(1); // sweep skipped -> oldest ("l") evicted
+    expect(await small.incr("l", 60)).toBe(1);
+  });
+
+  it("sweeps again at the cap once a second has passed", async () => {
+    const small = await fullStoreWithExpiringKey();
+    vi.advanceTimersByTime(1_100); // "s" expired and a new sweep is allowed
+    expect(await small.incr("n", 60)).toBe(1); // sweep frees "s"; "l" survives
+    expect(await small.incr("l", 60)).toBe(2);
+  });
+
+  it("keeps only the newest maxKeys keys under a flood of new keys", async () => {
+    const small = createMemoryCounterStore({ maxKeys: 5 });
+    for (let i = 0; i < 50; i++) await small.incr(`k${i}`, 60);
+    expect(await small.incr("k49", 60)).toBe(2);
+    expect(await small.incr("k45", 60)).toBe(2);
+    expect(await small.incr("k0", 60)).toBe(1);
+  });
 });

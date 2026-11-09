@@ -192,7 +192,7 @@ export const FAQ: FaqEntry[] = [
     group: "Aftercare",
     question: "When should I contact the clinic after treatment?",
     answer:
-      "Get in touch if pain gets worse, if you notice swelling, or if something does not feel right. In an emergency, call your local emergency number.",
+      "Demo note: this is a fictional answer. Your dentist explains aftercare for your own situation. Contact the clinic if something does not feel right. In an emergency, call your local emergency number.",
     keywords: ["after", "treatment", "swelling", "worse", "problem"],
   },
   {

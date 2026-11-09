@@ -146,6 +146,30 @@ const inScope: [string, string][] = [
   ["I have a toothache", "emergency"],
 ];
 
+// Long, polite, natural questions: greetings, weekdays, dates and filler must
+// not dilute the score of the real topic words.
+const inScopeLong: [string, string][] = [
+  ["Are you open on Saturday morning?", "hours"],
+  ["Hello, are you open on Saturday morning?", "hours"],
+  ["Hello, can I book an appointment for next Tuesday afternoon?", "booking"],
+  ["Hi, I would like to reschedule my appointment to next Monday", "reschedule"],
+  ["Could you tell me how much a check-up costs?", "pricing"],
+  ["Hello, do you accept dental insurance for my visit on Friday?", "insurance"],
+  ["Hi there, I was wondering if you offer teeth whitening", "whitening"],
+  ["I would like to know what happens at my first visit next week", "first-visit"],
+  ["Hi, just a quick question: what should I do after a filling tomorrow?", "aftercare"],
+  ["Hello, I need some help with aftercare instructions", "aftercare"],
+  // Plurals of day names and contractions (straight and curly apostrophes).
+  ["Are you open on Saturdays and Sundays?", "hours"],
+  ["Hi, I'm wondering if you're open", "hours"],
+  ["Hi, I’m wondering if you’re open", "hours"],
+  ["Hi there, I'd like to know whether you're open this Saturday", "hours"],
+  ["Can you tell me if you're open on Sundays?", "hours"],
+  ["what's the cost?", "pricing"],
+  ["I’d like to book an appointment on Mondays", "booking"],
+  ["Hello, what’s your address?", "location"],
+];
+
 // Each row: a question the FAQ cannot answer. Top score must stay below the threshold.
 const outOfScope: [string, string][] = [
   ["capital of France", "plain unrelated"],
@@ -154,10 +178,10 @@ const outOfScope: [string, string][] = [
   ["asdfghjkl qwertyuiop", "gibberish"],
   ["tell me a joke", "chat"],
   ["who won the football match yesterday", "unrelated news"],
-  ["what is the price of bitcoin today", "hard negative: shares 'price'"],
   ["book a flight to Paris", "hard negative: shares 'book'"],
   ["what is the opening price of the stock market", "hard negative: shares 'opening'"],
   ["how do I cook rice", "unrelated"],
+  ["Hello, can I book a flight to Paris next Tuesday?", "hard negative with greeting and weekday"],
 ];
 
 // KNOWN LIMITATION: a keyword approach cannot tell these from real questions.
@@ -166,6 +190,9 @@ const outOfScope: [string, string][] = [
 // not rely on the threshold alone to block off-topic questions.
 const knownLimitations: string[] = [
   "what is the price of bitcoin",
+  // Was an out-of-scope hard negative until "today" became a stopword: with
+  // "today" removed it is the same one-in-two shape as the line above.
+  "what is the price of bitcoin today",
   "what time is it in Tokyo",
 ];
 
@@ -174,6 +201,46 @@ describe("retrieve: in-scope fixture", () => {
     const t = top(q);
     expect(t?.entry.id).toBe(id);
     expect(t?.score ?? 0).toBeGreaterThanOrEqual(OUT_OF_SCOPE_THRESHOLD);
+  });
+});
+
+describe("retrieve: long polite in-scope fixture", () => {
+  it.each(inScopeLong)("%s -> %s", (q, id) => {
+    const t = top(q);
+    expect(t?.entry.id).toBe(id);
+    expect(t?.score ?? 0).toBeGreaterThanOrEqual(OUT_OF_SCOPE_THRESHOLD);
+  });
+});
+
+describe("retrieve: stopwords never remove an FAQ keyword", () => {
+  it("every keyword of every entry still matches its own entry with score 1", () => {
+    for (const entry of FAQ) {
+      for (const kw of entry.keywords) {
+        const r = retrieve(kw, 1, [entry]);
+        expect(r[0]?.score, `${entry.id}: ${kw}`).toBe(1);
+      }
+    }
+  });
+});
+
+describe("retrieve: redaction placeholders", () => {
+  it("ignores [phone] and [email] when ranking", () => {
+    const plain = top("can I book an appointment");
+    // "number" is a real contact keyword, so this one only checks the top id.
+    expect(top("Hi, my number is [phone], can I book an appointment?")?.entry.id).toBe(
+      "booking",
+    );
+    // Without a contact keyword, the placeholder must not change the score at all.
+    expect(top("Hi, it is [phone], can I book an appointment?")?.score).toBe(plain?.score);
+    expect(top("[email] can I book an appointment")?.score).toBe(plain?.score);
+  });
+
+  it("returns [] when only placeholders are left", () => {
+    expect(retrieve("[phone] [email]", 3)).toEqual([]);
+  });
+
+  it("still matches a plain question about the phone number", () => {
+    expect(top("what is your phone number")?.entry.id).toBe("contact");
   });
 });
 
@@ -255,6 +322,12 @@ describe("FAQ data integrity", () => {
     expect(FAQ.find((e) => e.id === "aftercare")?.answer).toBe(
       "Your dentist will explain what to do after a filling for your own situation. Contact your dentist if something does not feel right.",
     );
+  });
+
+  it("keeps the after-treatment answer free of symptom lists", () => {
+    const answer = FAQ.find((e) => e.id === "after-treatment")?.answer ?? "";
+    expect(answer).not.toMatch(/\b(pain|swelling|worse|bleeding|fever)\b/i);
+    expect(answer).toContain("your own situation");
   });
 
   it("avoids claim words banned by the copy rules", () => {

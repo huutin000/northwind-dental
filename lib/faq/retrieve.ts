@@ -42,7 +42,22 @@ const STOPWORDS = new Set([
   "get", "can", "could", "would", "should", "will", "there", "this", "that",
   "what", "how", "when", "where", "which", "who", "please", "tell",
   "clinic", "northwind", "dental", "teeth", "tooth",
+  // Day names and parts of the day: "Saturday morning" is a time, not a topic.
+  // ("weekend" is NOT here: it is a keyword of the hours entry.)
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+  "morning", "afternoon", "evening", "night", "tonight", "today", "tomorrow", "next",
+  // Greetings and polite filler: they pad a long question and dilute the score.
+  "hello", "hi", "hey", "thanks", "thank", "want", "like", "need", "wondering",
+  "wonder", "know", "let", "just", "also", "really", "maybe", "some", "wanna",
+  "hope", "quick", "question", "ask", "help",
+  // Contraction fragments: splitting "I'm", "you're", "what's", "don't", "I'd",
+  // "I've" and "I'll" on the apostrophe leaves "m", "re", "s", "t", "d", "ve", "ll".
+  "m", "re", "s", "t", "d", "ve", "ll",
+  // A test checks that no FAQ keyword is ever added to this list.
 ]);
+
+/** `redactPII` leaves these markers in text. They are not words the user typed. */
+const PLACEHOLDERS = /\[(?:phone|email)\]/gi;
 
 /** Cut a trailing plural "s" so "prices" matches "price". Keeps "address" and short words. */
 function singular(word: string): string {
@@ -54,7 +69,8 @@ function singular(word: string): string {
 /** Step 1: text -> list of clean words. Letters and digits of any language count as word characters. */
 function toWords(text: string): string[] {
   const words = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-  return words.filter((w) => !STOPWORDS.has(w)).map(singular);
+  // Also test the singular form, so "saturdays" is dropped like "saturday".
+  return words.filter((w) => !STOPWORDS.has(w) && !STOPWORDS.has(singular(w))).map(singular);
 }
 
 /** Step 2 and 3: points one entry earns for the question words, divided by the word count. */
@@ -80,8 +96,10 @@ export function retrieve(
   k: number,
   entries: FaqEntry[] = FAQ,
 ): FaqMatch[] {
+  // Drop the "[phone]" / "[email]" markers first, so the words "phone" and
+  // "email" inside them cannot pull a redacted question toward the contact entry.
   // A repeated word counts once, so "hours hours hours" cannot inflate a score.
-  const questionWords = [...new Set(toWords(question))];
+  const questionWords = [...new Set(toWords(question.replace(PLACEHOLDERS, " ")))];
   // Empty text, emoji only, or only filler words: nothing to match.
   if (questionWords.length === 0 || k <= 0) return [];
 
