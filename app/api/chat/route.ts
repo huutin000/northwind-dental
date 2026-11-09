@@ -3,6 +3,8 @@
 
 import { handleChat, RATE_LIMIT } from "@/lib/chat/handleChat";
 import { getProvider } from "@/lib/ai";
+import { checkRateLimit } from "@/lib/guard/rateLimit";
+import { getCounterStore } from "@/lib/kv/counterStore";
 import { getOrCreateSession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -36,7 +38,14 @@ export async function POST(req: Request): Promise<Response> {
     if (typeof body !== "object" || body === null || Array.isArray(body)) return invalid();
     const { message, history } = body as Record<string, unknown>;
 
-    const result = await handleChat({ message, history, sessionId }, { provider: getProvider() });
+    // Rate-limit counters: shared KV when configured, memory fallback when it is down.
+    const result = await handleChat(
+      { message, history, sessionId },
+      {
+        provider: getProvider(),
+        limiter: (key, opts) => checkRateLimit(key, opts, getCounterStore()),
+      },
+    );
     // The limiter result is not available here, so Retry-After is the whole window.
     const extra: Record<string, string> =
       result.status === 429 ? { "Retry-After": String(RATE_LIMIT.windowSeconds) } : {};

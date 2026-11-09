@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -10,5 +10,9 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // The live (real network) test has its own config: vitest.live.config.mts.
+    exclude: [...configDefaults.exclude, "tests/live/**"],
+    // Strips the key-value credentials from process.env before each test file.
+    setupFiles: ["tests/setup.ts"],
   },
 });
