@@ -12,12 +12,16 @@ const PANEL_ID = "chat-panel-region";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  // Once opened, the panel stays mounted (hidden when closed) so the
-  // in-memory conversation survives closing and client-side navigation.
+  // Not mounted (and its chunk not fetched) before the first open. After that the
+  // same panel instance stays mounted (hidden when closed), so the in-memory
+  // conversation survives close and reopen and client-side navigation.
   const [everOpened, setEverOpened] = useState(false);
-  // React.lazy caches a rejected import() forever. A retry therefore creates a
+  // React.lazy caches a rejected import() forever. Only retry() creates a
   // brand-new lazy component (a new import() call) and remounts the boundary
-  // through a new key. Creating lazy() does not fetch anything until it renders.
+  // through a new key; that is the only remount, and it resets the conversation.
+  // Consequence: after a load or render failure, closing and reopening shows the
+  // same failure box until "Try again" is pressed. Creating lazy() does not fetch
+  // anything until it renders.
   const [attempt, setAttempt] = useState(0);
   const [Panel, setPanel] = useState(() => lazy(loadPanel));
   const rootRef = useRef<HTMLDivElement>(null);
@@ -41,9 +45,6 @@ export default function ChatWidget() {
     if (open) {
       close();
     } else {
-      // M6: closing and reopening cleans up stale boundary errors
-      setPanel(() => lazy(loadPanel));
-      setAttempt((n) => n + 1);
       setEverOpened(true);
       setOpen(true);
     }
