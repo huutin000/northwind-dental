@@ -538,7 +538,7 @@ describe("getLeadStore", () => {
     expect(f).toHaveBeenCalledTimes(1);
   });
 
-  it("configured: the lead client keeps the default 3000 ms timeout (not the counter's 800)", async () => {
+  it("configured: the lead client uses its own 2000 ms timeout (not the counter's 800)", async () => {
     vi.useFakeTimers();
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://kv-up.invalid");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "tok");
@@ -550,7 +550,7 @@ describe("getLeadStore", () => {
         ),
     );
     const p = expect(getLeadStore().list(SID_A)).rejects.toMatchObject({ kind: "timeout" });
-    await vi.advanceTimersByTimeAsync(2999);
+    await vi.advanceTimersByTimeAsync(1999);
     expect(vi.getTimerCount()).toBe(1);
     await vi.advanceTimersByTimeAsync(1);
     await p;

@@ -4,6 +4,7 @@
 import { handleChat, RATE_LIMIT } from "@/lib/chat/handleChat";
 import { getProvider } from "@/lib/ai";
 import { checkRateLimit } from "@/lib/guard/rateLimit";
+import { checkJsonPost } from "@/lib/guard/requestGuard";
 import { getCounterStore } from "@/lib/kv/counterStore";
 import { getOrCreateSession } from "@/lib/session";
 
@@ -14,7 +15,13 @@ const MAX_BODY_CHARS = 32 * 1024; // 32 KB; a real chat request is far smaller
 
 export async function POST(req: Request): Promise<Response> {
   try {
-    // Always get the session first, so the cookie is also set on a 400.
+    // CSRF guard first: a rejected request gets no cookie and reaches nothing else.
+    const guard = checkJsonPost(req);
+    if (!guard.ok) {
+      return Response.json({ error: guard.error }, { status: guard.status, headers: { "Cache-Control": "no-store" } });
+    }
+
+    // Always get the session next, so the cookie is also set on a 400.
     const { sessionId, setCookie } = getOrCreateSession(req);
 
     const respond = (body: unknown, status: number, extra: Record<string, string> = {}) => {

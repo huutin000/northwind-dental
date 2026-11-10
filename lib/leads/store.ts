@@ -6,6 +6,11 @@ import { LEAD_ID, sanitizeLead, type Lead } from "./schema";
 
 export const LEAD_TTL_SECONDS = 86400;
 
+// Each lead store request gives up after 2 s (the rate-limit counter keeps its own 800 ms).
+// The limit is PER REQUEST: `list` sends two in a row (LRANGE, MGET), so GET can take about 4 s.
+// POST worst case: counter 0.8 s + an EXPIRE repair 0.8 s + categorise 4.5 s + save 2 s = about 8.1 s.
+export const LEAD_STORE_TIMEOUT_MS = 2000;
+
 export interface LeadStore {
   /**
    * Save a lead for a session. It disappears 24 hours later. The lead is validated
@@ -187,7 +192,7 @@ const misconfigured: LeadStore = {
 // KV configured -> KV store; nothing configured -> per-instance memory;
 // something configured but unusable -> the failing store above.
 export function getLeadStore(): LeadStore {
-  const status = getKvStatus(); // default 3000 ms timeout
+  const status = getKvStatus({ timeoutMs: LEAD_STORE_TIMEOUT_MS });
   if (status.state === "ok") return createKvLeadStore(status.client);
   return status.state === "none" ? memoryLeads : misconfigured;
 }

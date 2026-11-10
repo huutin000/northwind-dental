@@ -97,6 +97,11 @@ describe("mock provider", () => {
 });
 
 describe("buildMessages", () => {
+  it("empty faq: the system message is exactly input.system (no FAQ block)", () => {
+    const m = buildMessages(input({ faq: [] }));
+    expect(m[0]).toEqual({ role: "system", content: "SYSTEM PROMPT" });
+  });
+
   it("orders system, history, question; customer text stays out of system", () => {
     const m = buildMessages(input());
     expect(m.map((x) => x.role)).toEqual(["system", "user", "assistant", "user"]);

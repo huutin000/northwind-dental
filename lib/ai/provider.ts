@@ -41,8 +41,10 @@ export function buildMessages(
   const faqBlock = input.faq
     .map((e, i) => `[${i + 1}] Q: ${e.question}\nA: ${e.answer}`)
     .join("\n");
+  // No FAQ entries (for example lead classification): the system message is just the prompt.
+  const system = input.faq.length === 0 ? input.system : `${input.system}\n\nFAQ:\n${faqBlock}`;
   return [
-    { role: "system", content: `${input.system}\n\nFAQ:\n${faqBlock}` },
+    { role: "system", content: system },
     ...input.history,
     { role: "user", content: input.question },
   ];
