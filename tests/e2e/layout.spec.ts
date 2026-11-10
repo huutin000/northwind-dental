@@ -17,35 +17,36 @@ const VIEWPORTS = [
 
 const ROUTES = ["/", "/services", "/faq", "/contact", "/leads"];
 
+// One independent test per route and viewport, so a failure names the exact combination.
 for (const route of ROUTES) {
-  test(`no horizontal overflow and main controls visible on ${route} at every viewport`, async ({ page }) => {
-    for (const { width, height } of VIEWPORTS) {
-      const where = `${route} at ${width}x${height}`;
+  for (const { width, height } of VIEWPORTS) {
+    const where = `${route} at ${width}x${height}`;
+    test(where, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await page.goto(route);
       await page.waitForLoadState("load");
 
       const { scrollWidth, clientWidth } = await horizontalScroll(page);
-      expect.soft(scrollWidth, `${where}: scrollWidth ${scrollWidth} > clientWidth ${clientWidth}`).toBeLessThanOrEqual(
+      expect(scrollWidth, `${where}: scrollWidth ${scrollWidth} > clientWidth ${clientWidth}`).toBeLessThanOrEqual(
         clientWidth,
       );
 
-      await expect.soft(page.getByTestId("demo-banner"), `${where}: demo banner`).toBeVisible();
-      await expect.soft(page.getByRole("navigation", { name: "Main" }), `${where}: main navigation`).toBeVisible();
-      await expect.soft(page.getByRole("heading", { level: 1 }), `${where}: h1`).toBeVisible();
-      await expect.soft(page.getByTestId("chat-toggle"), `${where}: chat toggle`).toBeVisible();
+      await expect(page.getByTestId("demo-banner"), `${where}: demo banner`).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Main" }), `${where}: main navigation`).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1 }), `${where}: h1`).toBeVisible();
+      await expect(page.getByTestId("chat-toggle"), `${where}: chat toggle`).toBeVisible();
       // At scroll 0 the banner and the navigation sit at the top of the page, and the fixed toggle is always on screen.
-      await expect.soft(page.getByTestId("demo-banner"), `${where}: demo banner in viewport`).toBeInViewport();
-      await expect.soft(page.getByRole("navigation", { name: "Main" }), `${where}: nav in viewport`).toBeInViewport();
-      await expect.soft(page.getByTestId("chat-toggle"), `${where}: toggle fully in viewport`).toBeInViewport({ ratio: 1 });
+      await expect(page.getByTestId("demo-banner"), `${where}: demo banner in viewport`).toBeInViewport();
+      await expect(page.getByRole("navigation", { name: "Main" }), `${where}: nav in viewport`).toBeInViewport();
+      await expect(page.getByTestId("chat-toggle"), `${where}: toggle fully in viewport`).toBeInViewport({ ratio: 1 });
 
       if (route === "/contact") {
-        await expect.soft(page.getByTestId("lead-email"), `${where}: lead email`).toBeVisible();
-        await expect.soft(page.getByTestId("lead-submit"), `${where}: lead submit`).toBeVisible();
+        await expect(page.getByTestId("lead-email"), `${where}: lead email`).toBeVisible();
+        await expect(page.getByTestId("lead-submit"), `${where}: lead submit`).toBeVisible();
       }
       if (route === "/leads") {
-        await expect.soft(page.getByTestId("lead-notice"), `${where}: lead notice`).toBeVisible();
+        await expect(page.getByTestId("lead-notice"), `${where}: lead notice`).toBeVisible();
       }
-    }
-  });
+    });
+  }
 }
