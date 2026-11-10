@@ -1,285 +1,179 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import ScrollReveal from "@/components/ScrollReveal";
+import {
+  ChildIcon,
+  CleaningIcon,
+  CrownIcon,
+  FillingIcon,
+  RootCanalIcon,
+  WhiteningIcon,
+} from "@/components/illustrations/ServiceIcons";
 
 export const metadata: Metadata = {
   title: "Services",
   description:
-    "Comprehensive boutique dental services at Northwind Dental: preventive cleans, composite fillings, whitening, endodontics, restorative crowns, and children's dentistry.",
+    "Check-ups, cleaning, fillings, whitening, root canal treatment, crowns and bridges, and children's dentistry at Northwind Dental.",
 };
 
 type DentalService = {
   id: string;
   name: string;
-  tagline: string;
-  duration: string;
   summary: string;
   expectSteps: string[];
-  icon: (props: { className?: string }) => React.JSX.Element;
-};
-
-// Distinct, bespoke hand-crafted SVG clinical icons following the project color palette
-const ServiceIcons = {
-  Cleaning: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  Fillings: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 2C8 2 5 4.5 5 8c0 2.5 1 4.5 2 7l1.5 5.5c.3 1 1 1.5 2 1.5s1.7-.5 2-1.5L14 15c1-2.5 2-4.5 2-7 0-3.5-3-6-4-6Z" />
-      <path d="M9 8h6M12 5v6" />
-    </svg>
-  ),
-  Whitening: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" />
-      <path d="M5 3v4M3 5h4M19 17v4M17 19h4" />
-    </svg>
-  ),
-  RootCanal: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 3c0 4 1.5 7 2 10l1.5 7c.2.8.8 1 1.5 1s1.3-.2 1.5-1l1-5 1 5c.2.8.8 1 1.5 1s1.3-.2 1.5-1l1.5-7c.5-3 2-6 2-10-3 1-5 1-8 0-3 1-5 1-8 0Z" />
-      <path d="M12 7v7" />
-    </svg>
-  ),
-  Crowns: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7Z" />
-      <circle cx="12" cy="19" r="2" />
-    </svg>
-  ),
-  Pediatric: ({ className = "size-8" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
-      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-      <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5" />
-      <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5" />
-    </svg>
-  ),
+  Icon: (props: { className?: string }) => React.JSX.Element;
 };
 
 const servicesList: DentalService[] = [
   {
     id: "cleaning",
-    name: "Routine Cleaning & Hygiene Prevention",
-    tagline: "Preserving natural tooth structure and gum health",
-    duration: "45 – 60 minutes",
-    summary:
-      "Regular clinical maintenance to remove calcified plaque (calculus), prevent periodontal irritation, and polish tooth surfaces for lasting comfort.",
+    name: "Cleaning",
+    summary: "A scale and polish, with time to ask about your routine at home.",
     expectSteps: [
-      "Initial assessment of gum margins and pocket depths.",
-      "Ultrasonic calculus removal followed by hand instrumentation.",
-      "Gentle enamel polishing and personalized flossing advice.",
+      "We look at your teeth and gums and talk through what we see.",
+      "We remove plaque and tartar with hand and ultrasonic instruments.",
+      "We polish your teeth and answer questions about brushing and flossing.",
     ],
-    icon: ServiceIcons.Cleaning,
+    Icon: CleaningIcon,
   },
   {
     id: "fillings",
-    name: "Tooth-Colored Composite Fillings",
-    tagline: "Seamless structural restoration for minor decay",
-    duration: "30 – 50 minutes",
-    summary:
-      "Minimally invasive composite resin restorations that mimic natural tooth color and bond directly to preserve as much healthy tooth structure as possible.",
+    name: "Tooth-coloured fillings",
+    summary: "Your dentist explains the steps and the materials before the work begins.",
     expectSteps: [
-      "Targeted local numbing to ensure total procedure comfort.",
-      "Gentle removal of softened, decayed tooth matter.",
-      "Layered resin application, light-curing, and bite verification.",
+      "Your dentist looks at the tooth and talks through the options.",
+      "The tooth is prepared, and numbing is discussed with you beforehand.",
+      "The filling material is placed in layers, then we check your bite.",
     ],
-    icon: ServiceIcons.Fillings,
+    Icon: FillingIcon,
   },
   {
     id: "whitening",
-    name: "Professional Supervised Teeth Whitening",
-    tagline: "Dentist-guided enamel shade improvement",
-    duration: "60 minutes initial visit",
-    summary:
-      "Carefully formulated whitening systems tailored to your tooth sensitivity profile, helping to lift common everyday staining from coffee, tea, and age.",
+    name: "Whitening",
+    summary: "We go through shade options and how a session works before you decide.",
     expectSteps: [
-      "Clinical baseline check of existing restorations and tooth sensitivity.",
-      "Custom tray fabrication or chairside application planning.",
-      "Clear guidance on post-treatment dietary choices and aftercare.",
+      "We look at your teeth and any existing fillings or crowns.",
+      "We talk through the options, such as trays or a chairside session.",
+      "We explain how the treatment works and what to do afterwards.",
     ],
-    icon: ServiceIcons.Whitening,
+    Icon: WhiteningIcon,
   },
   {
     id: "root-canal",
-    name: "Endodontic Root Canal Care",
-    tagline: "Resolving deep tooth infection while saving the natural tooth",
-    duration: "60 – 90 minutes",
-    summary:
-      "When internal tooth pulp becomes inflamed or infected, endodontic therapy cleans and disinfects the microscopic internal canals, sealing them to avoid extraction.",
+    name: "Root canal treatment",
+    summary: "This treatment works on the inside of a tooth. We explain what it involves before we start.",
     expectSteps: [
-      "Profound local anaesthesia and isolation with a dental dam.",
-      "Careful canal cleansing using delicate rotary instruments.",
-      "Biocompatible canal sealing followed by a protective temporary seal.",
+      "Your dentist looks at the tooth and explains each stage.",
+      "The area is numbed, and the inside of the tooth is cleaned and shaped.",
+      "The tooth is sealed, and we explain what comes next.",
     ],
-    icon: ServiceIcons.RootCanal,
+    Icon: RootCanalIcon,
   },
   {
     id: "crowns",
-    name: "Ceramic Crowns & Precision Bridges",
-    tagline: "Rebuilding strength and chewing function for compromised teeth",
-    duration: "2 appointments (60 mins each)",
-    summary:
-      "High-strength ceramic restorations crafted to cover weakened teeth or span gaps left by missing teeth, engineered to match your natural bite contour.",
+    name: "Crowns and bridges",
+    summary: "A crown covers a tooth and a bridge spans a gap. We talk through the options first.",
     expectSteps: [
-      "Tooth preparation, 3D digital impressions, and temporary crown placement.",
-      "Custom fabrication in a dental laboratory to match your natural shade.",
-      "Precision fit checking, bite harmonization, and definitive bonding.",
+      "We look at your teeth and talk through the options.",
+      "We take impressions, and a temporary crown may be fitted.",
+      "At a later visit we check the fit and your bite before fixing the final piece.",
     ],
-    icon: ServiceIcons.Crowns,
+    Icon: CrownIcon,
   },
   {
     id: "pediatric",
-    name: "Children's Dental Care",
-    tagline: "Positive, stress-free dental introductions for young patients",
-    duration: "30 – 45 minutes",
-    summary:
-      "Nurturing visits focused on building curiosity and confidence. We introduce dental instruments at a child-friendly pace without overwhelming sensory cues.",
+    name: "Children's dentistry",
+    summary: "Visits for younger patients, with each step explained in simple words.",
     expectSteps: [
-      "Fun 'count the teeth' examination and familiarization with the chair.",
-      "Gentle clean and optional remineralizing fluoride varnish.",
-      "Helpful, positive tips for parents on brushing habits at home.",
+      "We say hello and show your child the chair and the tools.",
+      "We look at your child's teeth and count them together.",
+      "We talk with parents about brushing at home.",
     ],
-    icon: ServiceIcons.Pediatric,
+    Icon: ChildIcon,
   },
 ];
 
+const eyebrow = "text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-brand";
+const h2 = "text-[clamp(1.75rem,1.1rem+2.2vw,2.5rem)] leading-[1.15] text-ink";
+const lead = "max-w-[52ch] text-[1.1875rem] leading-relaxed text-muted";
+const btn =
+  "inline-flex min-h-12 w-full items-center justify-center rounded-button border-2 px-6 py-3 text-center font-semibold leading-tight transition-colors sm:w-auto";
+const btnPrimary = `${btn} border-transparent bg-brand text-canvas hover:bg-brand-strong`;
+const btnPeach = `${btn} border-transparent bg-peach text-ink hover:bg-peach-strong`;
+const band = "py-[clamp(3.5rem,9vw,7rem)]";
+
 export default function ServicesPage() {
   return (
-    <div className="space-y-16 sm:space-y-24">
-      {/* Header Banner */}
-      <section className="relative overflow-hidden rounded-[2.5rem] border border-line bg-gradient-to-br from-tint via-canvas to-tint-strong p-6 sm:p-10 lg:p-12">
-        <div className="max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas/80 px-3.5 py-1.5 text-xs font-semibold text-brand backdrop-blur-sm">
-            <span className="size-2 rounded-full bg-brand" aria-hidden="true" />
-            <span>Clinical Treatments & Procedures</span>
-          </div>
-
-          <h1 className="font-heading text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-            Our Dental Services
-          </h1>
-
-          <p className="text-base sm:text-lg text-muted leading-relaxed">
-            From routine prevention to restorative procedures, we take time to explain each step before beginning. Transparent discussions and written treatment plans accompany every visit.
+    <>
+      <section className="pb-[clamp(2rem,5vw,3.5rem)] pt-[clamp(1.5rem,4vw,4.5rem)]">
+        <div className="page-wrap grid justify-items-start gap-4">
+          <p className={`${eyebrow} motion-safe:animate-rise`}>Services</p>
+          <h1 className="text-[clamp(2.125rem,1.3rem+3.6vw,3.625rem)] leading-[1.08] text-ink">Our services</h1>
+          <p className={`${lead} motion-safe:animate-rise motion-safe:[animation-delay:0.1s]`}>
+            Check-ups, cleaning, fillings, whitening, root canal treatment, crowns and bridges, and children&apos;s
+            dentistry. We explain each step before we begin, and we go through costs with you first.
           </p>
-
-          <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-medium text-muted">
-            <span className="inline-flex items-center gap-1.5">
-              <svg className="size-4 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-              Clear visit durations
-            </span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <svg className="size-4 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Written treatment estimates
-            </span>
-          </div>
         </div>
       </section>
 
-      {/* Services Detailed List using Bespoke Clinical Icon Cards */}
-      <div className="space-y-10">
-        {servicesList.map((service, index) => {
-          const Icon = service.icon;
-          return (
-            <ScrollReveal
-              key={service.id}
-              as="article"
-              id={service.id}
-              className="grid gap-6 rounded-3xl border border-line bg-canvas p-6 sm:p-8 lg:p-10 lg:grid-cols-12 lg:items-center hover:border-edge/60 transition-colors shadow-sm"
+      <div className={`bg-sand ${band}`}>
+        <div className="page-wrap grid gap-4 lg:grid-cols-2">
+          {servicesList.map(({ id, name, summary, expectSteps, Icon }) => (
+            <article
+              key={id}
+              id={id}
+              className="grid content-start gap-4 rounded-card border border-line bg-surface p-6 shadow-soft sm:p-7"
             >
-              {/* Icon Badge Column (3 cols) */}
-              <div className="lg:col-span-3 flex lg:flex-col items-center lg:items-start gap-4">
-                <div className="flex size-16 sm:size-20 shrink-0 items-center justify-center rounded-2xl bg-tint text-brand border border-line shadow-inner">
-                  <Icon className="size-9 sm:size-10 text-brand" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-brand">
-                    Service 0{index + 1}
-                  </span>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-muted">
-                    <svg className="size-3.5 text-brand shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span>{service.duration}</span>
-                  </div>
-                </div>
+              <div className="flex items-center gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-button bg-tint text-brand">
+                  <Icon className="size-[26px]" />
+                </span>
+                <h2 className="text-2xl leading-tight text-ink">{name}</h2>
               </div>
-
-              {/* Content Column (9 cols) */}
-              <div className="lg:col-span-9 space-y-4">
-                <div>
-                  <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-ink">
-                    {service.name}
-                  </h2>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-brand-strong">
-                    {service.tagline}
-                  </p>
-                </div>
-
-                <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                  {service.summary}
-                </p>
-
-                {/* What to Expect Box */}
-                <div className="rounded-2xl border border-line bg-tint/50 p-4 sm:p-5">
-                  <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-brand-strong">
-                    What to expect during your appointment:
-                  </h3>
-                  <ul className="mt-2.5 space-y-1.5">
-                    {service.expectSteps.map((step, sIdx) => (
-                      <li key={sIdx} className="flex items-start gap-2 text-xs text-ink leading-relaxed">
-                        <span className="mt-1 size-1.5 rounded-full bg-brand shrink-0" aria-hidden="true" />
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-line text-xs">
-                  <div className="rounded-full bg-tint-strong px-3 py-1 font-medium text-brand-strong">
-                    Estimate given at your visit
-                  </div>
-                  <Link
-                    href="/contact"
-                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-brand px-6 text-xs font-semibold text-canvas hover:bg-brand-strong transition-all focus-visible:outline-brand"
-                  >
-                    Book this visit
-                  </Link>
-                </div>
+              <p className="text-muted">{summary}</p>
+              <div className="rounded-control bg-tint p-4">
+                <h3 className="font-sans text-base font-bold tracking-normal text-ink">What a visit involves</h3>
+                <ul className="mt-2.5 grid gap-2">
+                  {expectSteps.map((step) => (
+                    <li key={step} className="flex items-start gap-2.5 text-ink">
+                      <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </ScrollReveal>
-          );
-        })}
+              <div>
+                <Link
+                  href="/contact"
+                  className="inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4 hover:text-brand-strong"
+                >
+                  Book this visit
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
 
-      {/* Bottom CTA Section */}
-      <ScrollReveal as="section" className="rounded-3xl border border-line bg-tint-strong p-8 text-center sm:p-12">
-        <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-ink">
-          Have questions about which visit fits your needs?
-        </h2>
-        <p className="mt-3 max-w-lg mx-auto text-xs sm:text-sm text-muted">
-          Our demo assistant or reception desk can clarify appointment preparation, duration, and what to bring.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/contact"
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-8 py-3 text-xs sm:text-sm font-semibold text-canvas hover:bg-brand-strong transition-all"
-          >
-            Contact our clinic
-          </Link>
-          <Link
-            href="/faq"
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-edge/60 bg-canvas px-7 py-3 text-xs sm:text-sm font-semibold text-ink hover:bg-tint transition-colors"
-          >
-            Read FAQs
-          </Link>
+      <section className={band} aria-labelledby="services-cta-heading">
+        <div className="page-wrap">
+          <div className="relative isolate grid justify-items-start gap-4 overflow-hidden rounded-panel bg-tint-strong p-[clamp(1.75rem,6vw,4rem)] after:absolute after:-bottom-20 after:-right-15 after:-z-10 after:size-55 after:rounded-full after:bg-wash">
+            <h2 id="services-cta-heading" className={h2}>
+              Not sure which visit you need?
+            </h2>
+            <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
+              Tell us what you need and we will plan your visit around it. The FAQ covers hours, booking and costs.
+            </p>
+            <div className="mt-1.5 flex w-full flex-wrap gap-3">
+              <Link href="/contact" className={btnPrimary}>
+                Book a visit
+              </Link>
+              <Link href="/faq" className={btnPeach}>
+                Read the FAQ
+              </Link>
+            </div>
+          </div>
         </div>
-      </ScrollReveal>
-    </div>
+      </section>
+    </>
   );
 }

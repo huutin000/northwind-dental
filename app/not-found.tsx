@@ -1,39 +1,35 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SparkleCluster } from "@/components/illustrations/Decor";
+import { ToothMark } from "@/components/illustrations/Decor";
 
 export const metadata: Metadata = {
   title: "Page not found",
   description: "This page does not exist on the Northwind Dental demo site.",
 };
 
+const btn =
+  "inline-flex min-h-12 w-full items-center justify-center rounded-button border-2 px-6 py-3 text-center font-semibold leading-tight transition-colors sm:w-auto";
+
 export default function NotFound() {
   return (
-    <section className="flex flex-wrap items-center gap-8 rounded-[2rem] bg-tint px-5 py-12 sm:px-10">
-      <div className="max-w-md">
-        <h1 className="text-4xl font-bold tracking-tight text-ink">
+    <div className="page-wrap py-[clamp(2rem,6vw,5rem)]">
+      <section className="relative isolate grid justify-items-start gap-4 overflow-hidden rounded-panel bg-tint-strong p-[clamp(1.75rem,6vw,4rem)]">
+        <ToothMark className="absolute -bottom-8 -right-6 -z-10 size-48 text-wash sm:size-64" />
+        <h1 className="max-w-[18ch] text-[clamp(2.125rem,1.3rem+3.6vw,3.625rem)] leading-[1.08] text-ink">
           We could not find that page
         </h1>
-        <p className="mt-4 text-lg text-muted">
-          The link may be old or mistyped. Head back to the home page, or look
-          through our services.
+        <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
+          The link may be old or mistyped. Head back to the home page, or look through our services.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/"
-            className="inline-flex min-h-12 items-center rounded-full bg-brand px-7 py-3 font-semibold text-canvas hover:bg-brand-strong"
-          >
+        <div className="mt-1.5 flex w-full flex-wrap gap-3">
+          <Link href="/" className={`${btn} border-transparent bg-brand text-canvas hover:bg-brand-strong`}>
             Back to home
           </Link>
-          <Link
-            href="/services"
-            className="inline-flex min-h-12 items-center rounded-full border border-brand px-7 py-3 font-semibold text-brand-strong hover:bg-tint-strong"
-          >
+          <Link href="/services" className={`${btn} border-brand-strong bg-transparent text-ink hover:bg-surface/60`}>
             See services
           </Link>
         </div>
-      </div>
-      <SparkleCluster className="h-auto w-36" />
-    </section>
+      </section>
+    </div>
   );
 }

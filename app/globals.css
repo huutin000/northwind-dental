@@ -1,65 +1,120 @@
 @import "tailwindcss";
 
 /*
-  Design tokens (light theme only). Every color on the site comes from here.
-  Contrast, measured with the WCAG formula:
-  - ink on canvas 13.9, on tint 13.0 | muted on canvas 8.0, on tint 7.5
-  - brand on canvas 5.9, on tint 5.6 | canvas text on brand 5.9, on brand-strong 7.6
-  - edge (form borders) on canvas 4.3, on tint 4.1 (needs 3)
-  - notice-ink on notice 13.5 | footer-ink on footer 12.1
-  wash and accent are decorative (illustrations only); never put text on accent.
+  Design tokens ("Warm Arch", light theme only). Every color on the site comes from here.
+  Contrast, measured with the WCAG formula (node contrast script on this block):
+  - ink on canvas 14.64, surface 15.28, sand 13.11, tint 14.20, tint-strong 12.75
+  - muted on canvas 6.16, surface 6.43, sand 5.52, tint 5.98, tint-strong 5.36
+  - brand on canvas 5.60, surface 5.84, sand 5.01, tint 5.43, tint-strong 4.87 | canvas text on brand 5.60, on brand-strong 7.13
+  - ink on peach 9.78, on peach-strong 8.19 | edge (form borders) on canvas 3.18, surface 3.32, tint 3.09 (needs 3)
+  - notice-ink on notice 11.58 | error-ink on error 6.68 | success-ink on success 6.75
+  - footer-ink on footer 13.28, footer-muted on footer 9.64, peach on footer 9.78 (footer focus ring)
+  Do not use: edge on sand (2.85), edge on tint-strong (2.77), brand on footer (2.62).
+  wash, accent, oak and peach-strong are decorative or fill colors; never put small text on accent, wash or oak.
 */
 @theme {
-  --color-canvas: #ffffff;
-  --color-ink: #082f49;
-  --color-muted: #35546a;
+  --color-canvas: #fbf8f2;
+  --color-surface: #fffdf9;
+  --color-sand: #f3ebdd;
+  --color-tint: #eef6fb;
+  --color-tint-strong: #dcebf5;
+  --color-wash: #bfddf0;
+  --color-accent: #7cc3e8;
   --color-brand: #0369a1;
   --color-brand-strong: #075985;
-  --color-tint: #f0f9ff;
-  --color-tint-strong: #e0f2fe;
-  --color-wash: #bae6fd;
-  --color-accent: #38bdf8;
-  --color-line: #bae6fd;
-  --color-edge: #4f7f9c;
-  --color-notice: #fef3c7;
-  --color-notice-ink: #451a03;
-  --color-footer: #082f49;
-  --color-footer-ink: #e0f2fe;
-  --color-footer-muted: #bae6fd;
+  --color-ink: #0b2540;
+  --color-muted: #46607a;
+  --color-peach: #f6c3a0;
+  --color-peach-strong: #f0ae82;
+  --color-oak: #d9b88f;
+  --color-line: #e6dccb;
+  --color-edge: #7a8ea3;
+  --color-notice: #fff1d6;
+  --color-notice-ink: #4a2a05;
+  --color-notice-line: #ebd3a0;
+  --color-error: #fbe9e7;
+  --color-error-ink: #9f1f17;
+  --color-success: #e4f3ea;
+  --color-success-ink: #1b5e3b;
+  --color-footer: #0b2540;
+  --color-footer-ink: #e3eff8;
+  --color-footer-muted: #b7cfe2;
   --color-disabled: #475569;
-  --font-heading: var(--font-bricolage), var(--font-geist-sans), Arial, sans-serif;
-  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --radius-control: 12px;
+  --radius-button: 14px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --shadow-soft: 0 1px 2px rgb(11 37 64 / 0.06);
+  --shadow-lift: 0 10px 28px -14px rgb(11 37 64 / 0.22);
+  --shadow-toggle: 0 10px 24px -8px rgb(3 105 161 / 0.55);
+  --shadow-panel: 0 24px 60px -20px rgb(11 37 64 / 0.35);
+  --animate-fade-in: fadeIn 200ms ease-out forwards;
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  @keyframes rise {
+    from {
+      transform: translateY(14px);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* Phones (narrow and tall enough for a bottom bar). The bar is hidden on short landscape phones. */
+@custom-variant mobile-bar (@media (width < 48rem) and (height >= 30rem));
+
+/* 4:5 arched image frame (Home hero). Transform-free; the image inside fills it. */
+@utility arch {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 50% 50% var(--radius-panel) var(--radius-panel) / 32% 32% var(--radius-panel) var(--radius-panel);
+}
+
+/* Centred page column used by every page root. */
+@utility page-wrap {
+  width: 100%;
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 5vw, 3.5rem);
 }
 
 /*
   Layout tokens.
-  --sticky-offset: height of the header where it is sticky (md and up only,
-    0 below md where it scrolls away); used as scroll-padding-top so anchors
-    and the skip-link target are not hidden under it.
-  Chat slot (Task 7): ChatWidget mounts fixed at bottom-right.
+  --sticky-offset: height of the sticky header (4.25rem / 68px at every width); used as
+    scroll-padding-top so anchors and the skip-link target are not hidden under it.
+  Chat slot: ChatWidget mounts fixed at bottom-right.
     --chat-size: launcher button size (3.5rem / 56px)
     --chat-offset: gap from the viewport edges (1rem / 16px)
     --chat-z: stacking level (above the sticky header, which is 30)
-    --chat-reserve: bottom padding the footer keeps free so nothing is covered.
+    --chat-bottom: distance of the toggle and the panel anchor from the viewport bottom.
+      Default keeps the offset (or the safe area). Where the mobile "Book a visit" bar is
+      rendered (it carries data-mobile-cta) on a phone, the toggle sits above the bar.
+    --chat-reserve: bottom padding the footer keeps free so nothing is covered
+      (8rem on phones, where the bar adds about 4.5rem).
 */
 :root {
-  --sticky-offset: 0rem;
+  --sticky-offset: 4.25rem;
   --chat-size: 3.5rem;
   --chat-offset: 1rem;
   --chat-z: 60;
+  --chat-bottom: max(var(--chat-offset), env(safe-area-inset-bottom));
   --chat-reserve: calc(var(--chat-size) + var(--chat-offset) * 2 + 1.5rem);
 }
 
-@media (min-width: 48rem) {
+@media (width < 48rem) and (height >= 30rem) {
   :root {
-    --sticky-offset: 5rem;
+    --chat-reserve: 8rem;
+  }
+  body:has([data-mobile-cta]) {
+    --chat-bottom: calc(4.5rem + var(--chat-offset) + env(safe-area-inset-bottom));
   }
 }
 
 html {
   scroll-padding-top: var(--sticky-offset);
-  overflow-x: hidden;
 }
 
 @layer base {
@@ -68,6 +123,9 @@ html {
   h3,
   h4 {
     font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 }
 
@@ -75,7 +133,6 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  overflow-x: hidden;
   width: 100%;
 }
 
@@ -84,26 +141,26 @@ body {
   outline-offset: 2px;
 }
 
-/*
-  Progressive Enhancement Scroll Reveal:
-  - By default (no JavaScript / SSR): fully visible (opacity: 1, transform: none)
-  - With JavaScript: component mounts, adds 'js-ready', hides element, and animates when intersecting
-*/
-.reveal-on-scroll {
-  opacity: 1;
-  transform: none;
+/* Controls on the brand-coloured chat header: the default brand outline would vanish there. */
+.on-brand:focus-visible {
+  outline-color: var(--color-canvas);
+  outline-offset: -3px;
 }
 
-.reveal-on-scroll.js-ready {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+/* The chat toggle floats over any section (canvas, sand, navy footer): a canvas gap ring
+   keeps the brand outline readable on all of them. */
+[data-chat-widget] > button:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-canvas);
 }
 
-.reveal-on-scroll.js-ready.is-visible {
-  opacity: 1;
-  transform: translateY(0);
+/* Rows inside clipped (overflow-hidden) cards draw their ring inside the card. */
+.focus-inset:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Brand blue fails on the navy footer (2.62); peach is 9.78. */
+footer :focus-visible {
+  outline-color: var(--color-peach);
 }
 
 /* Accordion smooth expansion using CSS grid template rows */
@@ -121,28 +178,6 @@ body {
   overflow: hidden;
 }
 
-/* Gentle sparkle pulse on decorative illustrations. Off for reduced motion. */
-@media (prefers-reduced-motion: no-preference) {
-  .sparkle {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: sparkle-pulse 4s ease-in-out infinite;
-  }
-  .sparkle-late {
-    animation-delay: 1.6s;
-  }
-}
-
-@keyframes sparkle-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -154,10 +189,6 @@ body {
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 200ms ease-out forwards;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -165,12 +196,6 @@ body {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation: none !important;
-  }
-  .reveal-on-scroll,
-  .reveal-on-scroll.js-ready {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
   }
   .accordion-content {
     transition: none !important;

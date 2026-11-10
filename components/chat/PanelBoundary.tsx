@@ -4,7 +4,7 @@ import { Component, useEffect, useRef, type ReactNode } from "react";
 import { shouldRefocus } from "./helpers";
 
 const BOX =
-  "w-[min(24rem,calc(100vw-2*var(--chat-offset)))] rounded-2xl border border-edge bg-canvas p-4 text-sm text-ink shadow-xl";
+  "w-[min(24.5rem,calc(100vw-2*var(--chat-offset)))] rounded-panel border border-line bg-surface p-5 text-[0.9375rem] text-ink shadow-panel";
 
 /** Shown while the lazy chunk is being fetched. */
 export function PanelLoading() {
@@ -30,7 +30,7 @@ export function PanelLoading() {
     <div
       ref={loadingRef}
       tabIndex={-1}
-      className={`${BOX} focus:outline-none`}
+      className={BOX}
     >
       <div className="flex items-center gap-2 text-muted">
         <svg
@@ -78,23 +78,31 @@ function PanelFailed({ onRetry, onClose }: { onRetry: () => void; onClose: () =>
       className={BOX}
     >
       {/* M1 & M5: Dropped role="alert", added aria-describedby and friendly text */}
-      <p id="chat-boundary-error-msg" className="font-medium text-ink">
-        Chat is unavailable right now.
-      </p>
-      <div className="mt-3 flex gap-2">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-error text-error-ink" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" focusable="false">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+        </span>
+        <p id="chat-boundary-error-msg" className="font-heading text-lg text-ink">
+          Chat is unavailable right now.
+        </p>
+      </div>
+      <div className="mt-4 flex gap-2">
         <button
           ref={retryRef}
           type="button"
           data-testid="chat-retry"
           onClick={onRetry}
-          className="min-h-11 rounded-lg bg-brand px-4 text-canvas hover:bg-brand-strong motion-safe:transition-colors focus-visible:outline-brand"
+          className="min-h-11 rounded-button bg-brand px-5 font-semibold text-canvas hover:bg-brand-strong motion-safe:transition-colors"
         >
           Try again
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="min-h-11 rounded-lg border border-edge px-4 text-ink hover:bg-tint focus-visible:outline-brand"
+          className="min-h-11 rounded-button border border-edge px-5 font-semibold text-ink hover:bg-tint"
         >
           Close
         </button>

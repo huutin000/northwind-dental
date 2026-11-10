@@ -80,9 +80,7 @@ export default function ChatWidget() {
       <div
         id={PANEL_ID}
         hidden={!open}
-        className={`fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[calc(max(var(--chat-offset),env(safe-area-inset-bottom))+var(--chat-size)+0.75rem)] z-(--chat-z) origin-bottom-right transition-all duration-200 ease-out motion-reduce:transition-none ${
-          open ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"
-        }`}
+        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[calc(var(--chat-bottom)+var(--chat-size)+0.75rem)] z-(--chat-z)"
       >
         {everOpened ? (
           <PanelBoundary key={attempt} onRetry={retry} onClose={close}>
@@ -100,7 +98,7 @@ export default function ChatWidget() {
         aria-controls={PANEL_ID}
         aria-label={open ? "Close chat" : "Open chat with Northwind Dental"}
         onClick={toggle}
-        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[max(var(--chat-offset),env(safe-area-inset-bottom))] z-(--chat-z) flex size-(--chat-size) items-center justify-center rounded-full bg-brand text-canvas shadow-lg hover:bg-brand-strong hover:scale-105 active:scale-95 focus-visible:outline-canvas focus-visible:outline-offset-0 focus-visible:shadow-[0_0_0_6px_var(--color-ink)] motion-safe:transition-all"
+        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-(--chat-bottom) z-(--chat-z) flex size-(--chat-size) items-center justify-center rounded-full bg-brand text-canvas shadow-toggle hover:bg-brand-strong motion-safe:hover:scale-105 motion-safe:active:scale-95 motion-safe:transition-all"
       >
         {open ? (
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true" focusable="false">

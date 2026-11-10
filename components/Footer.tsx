@@ -10,45 +10,40 @@ const navLinks = [
 ];
 
 const clinicalTopics = [
-  { href: "/faq#faq-group-0", label: "Your First Visit" },
-  { href: "/faq#faq-group-1", label: "Hygiene & Prevention" },
-  { href: "/faq#faq-group-2", label: "Comfort & Restorations" },
-  { href: "/services", label: "Treatment Expectations" },
+  { href: "/faq#faq-group-0", label: "Opening hours and booking" },
+  { href: "/faq#faq-group-2", label: "Costs and insurance" },
+  { href: "/faq#faq-group-3", label: "Before your visit" },
+  { href: "/services", label: "What each visit involves" },
 ];
+
+const linkClass =
+  "inline-flex min-h-11 items-center rounded-control text-footer-ink underline-offset-4 hover:underline md:min-h-9";
+const headingClass = "font-sans text-[0.9375rem] font-bold tracking-[0.02em] text-footer-ink";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-line bg-footer pb-[var(--chat-reserve)] text-footer-muted">
-      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-4">
-          {/* Brand & Demo Disclaimer */}
-          <div className="md:col-span-1">
-            <Link href="/" className="inline-flex items-center gap-2.5 font-heading text-lg font-bold text-footer-ink">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-footer-ink text-footer p-1">
-                <ToothMark className="size-5 shrink-0" />
-              </span>
+    <footer className="bg-footer pt-14 pb-[var(--chat-reserve)] text-footer-muted">
+      <div className="page-wrap">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1.3fr]">
+          <div className="space-y-3">
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center gap-2.5 rounded-control font-heading text-[1.375rem] font-medium tracking-[-0.02em] text-footer-ink"
+            >
+              <ToothMark className="size-7 shrink-0 text-accent" />
               <span>{clinic.name}</span>
             </Link>
-            <p className="mt-3 text-xs leading-relaxed text-footer-muted">
-              A fictional boutique dental practice demo showcasing patient-centered design, clear treatment planning, and tranquil clinic spaces.
+            <p className="max-w-xs text-sm leading-relaxed">
+              A fictional dental clinic website, built as a demo project.
             </p>
-            <div className="mt-4 rounded-xl border border-footer-muted/20 bg-footer-ink/5 p-3 text-[11px] leading-relaxed text-footer-muted">
-              Demo project only. No real appointments or medical care provided.
-            </div>
           </div>
 
-          {/* Quick Navigation */}
           <nav aria-label="Footer navigation">
-            <h2 className="font-heading text-sm font-semibold tracking-wider uppercase text-footer-ink">
-              Explore
-            </h2>
-            <ul className="mt-3 space-y-2 text-xs">
+            <h2 className={headingClass}>Explore</h2>
+            <ul className="mt-2 grid gap-1 text-sm">
               {navLinks.map((l) => (
                 <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    className="inline-flex min-h-8 items-center hover:text-footer-ink underline-offset-4 hover:underline transition-colors focus-visible:outline-footer-ink"
-                  >
+                  <Link href={l.href} className={linkClass}>
                     {l.label}
                   </Link>
                 </li>
@@ -56,18 +51,12 @@ export default function Footer() {
             </ul>
           </nav>
 
-          {/* Patient Guides */}
           <nav aria-label="Patient guides">
-            <h2 className="font-heading text-sm font-semibold tracking-wider uppercase text-footer-ink">
-              Patient Care
-            </h2>
-            <ul className="mt-3 space-y-2 text-xs">
+            <h2 className={headingClass}>Patient Care</h2>
+            <ul className="mt-2 grid gap-1 text-sm">
               {clinicalTopics.map((t) => (
                 <li key={t.label}>
-                  <Link
-                    href={t.href}
-                    className="inline-flex min-h-8 items-center hover:text-footer-ink underline-offset-4 hover:underline transition-colors focus-visible:outline-footer-ink"
-                  >
+                  <Link href={t.href} className={linkClass}>
                     {t.label}
                   </Link>
                 </li>
@@ -75,34 +64,28 @@ export default function Footer() {
             </ul>
           </nav>
 
-          {/* Clinic Hours & Contact */}
           <div>
-            <h2 className="font-heading text-sm font-semibold tracking-wider uppercase text-footer-ink">
-              Visit Clinic
-            </h2>
-            <address className="mt-3 space-y-1.5 text-xs not-italic text-footer-muted">
-              <p className="text-footer-ink font-medium">{clinic.address}</p>
+            <h2 className={headingClass}>Visit Clinic</h2>
+            <address className="mt-2 space-y-1 text-sm not-italic">
+              <p className="text-footer-ink">{clinic.address}</p>
               <p>Phone: {clinic.phone}</p>
               <p className="break-words">Email: {clinic.email}</p>
-              <div className="mt-3 pt-3 border-t border-footer-muted/15">
-                <p className="font-medium text-footer-ink">Hours:</p>
-                <p className="mt-0.5">{clinic.hoursSummary}</p>
-              </div>
             </address>
+            <dl className="mt-4 space-y-1 text-sm">
+              {clinic.hours.map((h) => (
+                <div key={h.days} className="flex flex-wrap justify-between gap-x-4">
+                  <dt>{h.days}</dt>
+                  <dd className="text-footer-ink">{h.time}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-footer-muted/15 pt-6 text-xs sm:flex-row">
-          <p>© {new Date().getFullYear()} Northwind Dental. Fictional demo for portfolio review.</p>
-          <div className="flex items-center gap-4">
-            <Link href="/contact" className="hover:text-footer-ink underline-offset-4 hover:underline">
-              Book consultation
-            </Link>
-            <span aria-hidden="true" className="text-footer-muted/40">•</span>
-            <Link href="/faq" className="hover:text-footer-ink underline-offset-4 hover:underline">
-              FAQ
-            </Link>
-          </div>
+        <div className="mt-10 grid gap-1 border-t border-footer-muted/30 pt-5 text-sm">
+          <p>Demo website. Northwind Dental is not a real clinic.</p>
+          <p>Images on this site are AI-generated.</p>
+          <p>© {new Date().getFullYear()} Northwind Dental</p>
         </div>
       </div>
     </footer>
