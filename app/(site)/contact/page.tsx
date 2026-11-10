@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { clinic } from "@/components/clinic";
+import LeadForm from "@/components/LeadForm";
 import { MapIllustration } from "@/components/illustrations/Decor";
 
 export const metadata: Metadata = {
@@ -7,9 +8,6 @@ export const metadata: Metadata = {
   description:
     "Request an appointment or reach out to Northwind Dental (fictional boutique clinic). Opening hours, address, and demo booking form.",
 };
-
-const inputClass =
-  "mt-1.5 block min-h-11 w-full rounded-xl border border-edge bg-canvas px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all";
 
 export default function ContactPage() {
   return (
@@ -27,7 +25,7 @@ export default function ContactPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-muted leading-relaxed">
-            We are located in the heart of Sampletown. Use the form below to request an appointment date, or reach out directly by phone during reception hours.
+            We are located in the heart of Sampletown. Use the form below to leave a request, or see the phone number and hours for reception.
           </p>
         </div>
       </section>
@@ -37,90 +35,18 @@ export default function ContactPage() {
         {/* Left Column: Booking Request Form (7 cols) */}
         <section
           aria-labelledby="form-heading"
-          className="lg:col-span-7 rounded-3xl border border-line bg-canvas p-6 sm:p-8 shadow-sm space-y-6"
+          className="min-w-0 lg:col-span-7 rounded-3xl border border-line bg-canvas p-6 sm:p-8 shadow-sm space-y-6"
         >
           <div>
             <h2 id="form-heading" className="font-heading text-2xl font-bold text-ink">
               Request an Appointment
             </h2>
             <p className="mt-1 text-xs text-muted">
-              Select your preferred service and time. Our coordinator will reach out to confirm.
+              Leave an email address and an optional note. This is a demo: nothing is sent to a real clinic.
             </p>
           </div>
 
-          <div
-            role="note"
-            className="flex items-start gap-3 rounded-2xl border border-notice-ink/20 bg-notice/30 p-4 text-xs text-notice-ink"
-          >
-            <svg className="size-4 shrink-0 text-notice-ink mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div className="space-y-1">
-              <p className="font-semibold">Fictional Demo Environment</p>
-              <p className="text-notice-ink/80 leading-relaxed">
-                This is a demonstration portfolio site. Please do not submit real personal or health information. Any submitted test fields are purged within 24 hours.
-              </p>
-            </div>
-          </div>
-
-          {/* Accessible Form */}
-          <form className="space-y-4" noValidate>
-            <div>
-              <label htmlFor="lead-name" className="block text-xs font-semibold uppercase tracking-wider text-ink">
-                Your Full Name <span className="text-brand">*</span>
-              </label>
-              <input
-                id="lead-name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                placeholder="e.g. Alex Morgan"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="lead-email" className="block text-xs font-semibold uppercase tracking-wider text-ink">
-                Email Address <span className="text-brand">*</span>
-              </label>
-              <input
-                id="lead-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="e.g. alex@example.com (use a mock email)"
-                className={inputClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="lead-note" className="block text-xs font-semibold uppercase tracking-wider text-ink">
-                Appointment Notes & Concerns
-              </label>
-              <textarea
-                id="lead-note"
-                name="note"
-                rows={4}
-                placeholder="Let us know what you would like help with (routine hygiene, sensitive tooth, first-time visit preferences)..."
-                className={inputClass}
-              />
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled
-                className="inline-flex min-h-12 w-full sm:w-auto items-center justify-center rounded-full bg-disabled px-8 py-3 text-xs sm:text-sm font-semibold text-canvas disabled:cursor-not-allowed shadow-sm"
-              >
-                Send request (not active in demo)
-              </button>
-              <p className="mt-2 text-[11px] text-muted">
-                Form submissions are disabled in this frontend demonstration.
-              </p>
-            </div>
-          </form>
+          <LeadForm />
         </section>
 
         {/* Right Column: Clinic Information, Hours & Map (5 cols) */}

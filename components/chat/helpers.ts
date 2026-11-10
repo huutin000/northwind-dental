@@ -39,6 +39,18 @@ export function sourceLabel(source: unknown): string | null {
   }
 }
 
+/** The contact hint is shown under a reply only when the answer was out of scope. */
+export function showsContactHint(source: unknown): boolean {
+  return source === "out-of-scope";
+}
+
+/** All real turns, oldest first, role and content only (the history store trims by itself). */
+export function storeHistory(messages: readonly ChatMessage[]): HistoryItem[] {
+  return messages
+    .filter((m) => m.kind === "turn")
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+
 /** The last 4 real turns (before the new message) in the exact shape the API expects. */
 export function buildHistory(messages: readonly ChatMessage[]): HistoryItem[] {
   return messages

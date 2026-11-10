@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { setChatHistory } from "@/lib/leads/chatHistory";
 import {
   MAX_INPUT_LENGTH,
   applyFailure,
@@ -9,7 +11,9 @@ import {
   isChatResponse,
   normalizeInput,
   shouldRefocus,
+  showsContactHint,
   sourceLabel,
+  storeHistory,
   type ChatMessage,
 } from "./helpers";
 
@@ -34,9 +38,9 @@ const GREETING: ChatMessage = {
     "Hi, I'm a demo assistant for Northwind Dental, a fictional clinic. I can help with opening hours, booking, services, costs, preparation and aftercare. Please do not enter real personal details such as a real email address or phone number.",
 };
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; onNavigate: () => void };
 
-export default function ChatPanel({ open, onClose }: Props) {
+export default function ChatPanel({ open, onClose, onNavigate }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -81,6 +85,12 @@ export default function ChatPanel({ open, onClose }: Props) {
       abortRef.current?.abort();
     };
   }, []);
+
+  // Mirror the real conversation into the in-memory store the lead form reads.
+  // Runs on mount too, so a freshly mounted panel (greeting only) empties the store.
+  useEffect(() => {
+    setChatHistory(storeHistory(messages));
+  }, [messages]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -255,6 +265,25 @@ export default function ChatPanel({ open, onClose }: Props) {
                 <span data-testid="chat-source" className="mt-2 block w-fit rounded-full bg-tint-strong px-2 py-0.5 text-xs text-muted">
                   {label}
                 </span>
+              ) : null}
+              {m.kind === "turn" && showsContactHint(m.source) ? (
+                <p
+                  data-testid="chat-contact-hint"
+                  className="mt-2 border-t border-line pt-1 text-xs text-ink"
+                >
+                  Prefer to talk to the team?{" "}
+                  <Link
+                    href="/contact#form-heading"
+                    data-testid="chat-contact-link"
+                    onClick={(e) => {
+                      // Plain left click only: a new-tab click keeps the panel open.
+                      if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) onNavigate();
+                    }}
+                    className="inline-flex min-h-11 items-center font-semibold text-brand-strong underline underline-offset-2 hover:text-ink"
+                  >
+                    Leave your contact details.
+                  </Link>
+                </p>
               ) : null}
             </div>
           );

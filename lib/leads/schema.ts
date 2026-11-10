@@ -28,6 +28,18 @@ const ERR_NOTE = `Please keep the note to at most ${MAX_NOTE} characters.`;
 const ERR_HISTORY = "The conversation could not be read. Please try again.";
 const ERR_GENERIC = "Sorry, we could not process that. Please check your details and try again.";
 
+const ERR_TOO_BIG = "Please shorten your message and try again.";
+
+/** The fixed 400 texts, exported so the client can recognise them (it never trusts other server text). */
+export const LEAD_ERRORS = {
+  email: ERR_EMAIL,
+  name: ERR_NAME,
+  note: ERR_NOTE,
+  history: ERR_HISTORY,
+  generic: ERR_GENERIC,
+  tooBig: ERR_TOO_BIG,
+} as const;
+
 const fail = (error: string): ParseResult => ({ ok: false, error });
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

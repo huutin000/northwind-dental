@@ -11,7 +11,7 @@ import type { checkRateLimit } from "@/lib/guard/rateLimit";
 import { redactPII } from "@/lib/guard/redactPII";
 import { KvError } from "@/lib/kv/upstash";
 import { categorize } from "./categorize";
-import { MAX_HISTORY_ITEMS, parseLeadInput, sanitizeLead, type Lead } from "./schema";
+import { LEAD_ERRORS, MAX_HISTORY_ITEMS, parseLeadInput, sanitizeLead, type Lead } from "./schema";
 import type { LeadStore } from "./store";
 
 export type LeadResult =
@@ -22,7 +22,7 @@ export const LEAD_RATE_LIMIT = { limit: 3, windowSeconds: 86400 };
 const MAX_HISTORY_CHARS = 500;
 
 const LIMIT_ERROR = "You have reached the limit of 3 requests for this demo. Please try again tomorrow.";
-const TOO_BIG_ERROR = "Please shorten your message and try again.";
+const TOO_BIG_ERROR = LEAD_ERRORS.tooBig;
 const SAVE_ERROR = "Sorry, we could not save your request. Please try again.";
 
 // Same 3-line helper as lib/chat/handleChat.ts (not exported there).

@@ -28,6 +28,10 @@ export default function ChatWidget() {
     toggleRef.current?.focus();
   }, []);
 
+  // Following the contact link: hide the panel but do not pull focus to the toggle,
+  // so the destination page controls focus and scroll.
+  const closeForNavigation = useCallback(() => setOpen(false), []);
+
   const retry = useCallback(() => {
     setPanel(() => lazy(loadPanel));
     setAttempt((n) => n + 1);
@@ -82,7 +86,7 @@ export default function ChatWidget() {
         {everOpened ? (
           <PanelBoundary key={attempt} onRetry={retry} onClose={close}>
             <Suspense fallback={<PanelLoading />}>
-              <Panel open={open} onClose={close} />
+              <Panel open={open} onClose={close} onNavigate={closeForNavigation} />
             </Suspense>
           </PanelBoundary>
         ) : null}
