@@ -49,3 +49,8 @@ skills-lock.json
 # temporary scratch scripts
 scratch/
 assets-src/
+
+# playwright
+playwright-report/
+test-results/
+blob-report/
