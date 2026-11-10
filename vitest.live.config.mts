@@ -11,5 +11,8 @@ export default defineConfig({
   },
   test: {
     include: ["tests/live/**/*.test.ts"],
+    // Each round trip to a far-away region can take several hundred ms.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
   },
 });
