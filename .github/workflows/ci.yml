@@ -1,6 +1,7 @@
 # CI for Northwind Dental: lint, typecheck, unit tests, production build, mock-AI e2e tests.
 #
-# Action pins: every `uses:` is pinned by FULL COMMIT SHA with the release in a trailing comment. Tags are
+# Action pins (exactly three: actions/checkout v7.0.1, actions/setup-node v7.1.0, actions/upload-artifact v7.0.2):
+# every `uses:` is pinned by FULL COMMIT SHA with the release in a trailing comment. Tags are
 # mutable, a SHA is not (supply-chain choice). To bump an action, re-resolve the SHA of the new release tag
 # (for example `git ls-remote https://github.com/actions/checkout "refs/tags/vX.Y.Z*"`) and update the comment.
 #
@@ -36,13 +37,17 @@ jobs:
         with:
           persist-credentials: false
 
-      # Node 26 is the only version used: the project has no `engines` field and no .nvmrc, and every local
-      # verification ran on Node 26.13.0. The owner may switch to 24 after deciding. `cache: npm` keys the npm
-      # cache by package-lock.json.
+      # The Node major comes from .nvmrc (value 26) so CI, local nvm and Vercel agree. package.json `engines.node`
+      # is `>=26`. Sources checked on 2026-11-10: the official Node.js release schedule
+      # (https://github.com/nodejs/Release/blob/main/schedule.json, also shown at
+      # https://nodejs.org/en/about/previous-releases): v26 "Lithium" is Active LTS since 2026-10-28; and the Vercel
+      # docs (https://vercel.com/docs/functions/runtimes/node-js/node-js-versions): supported 26.x (default), 24.x,
+      # 22.x, plus the changelog https://vercel.com/changelog/node-js-26-lts-is-now-generally-available-on-vercel
+      # (2026-10-29). `cache: npm` keys the npm cache by package-lock.json.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0 (2026-10-08)
         with:
-          node-version: 26
+          node-version-file: .nvmrc
           cache: npm
 
       # A throw-away session secret generated on the runner. It is NOT a repository secret. The e2e webServer
@@ -69,21 +74,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 (2026-06-26)
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
-      # System libraries are not cached, so they are installed on a cache hit too.
       - name: Install Chromium and system libraries
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
-
-      - name: Install system libraries only (browser cache hit)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
 
       - name: End-to-end tests (mock AI)
         run: npm run test:e2e
