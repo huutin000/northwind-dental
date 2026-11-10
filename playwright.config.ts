@@ -28,11 +28,15 @@ export default defineConfig({
   grepInvert: /@live/,
   fullyParallel: true,
   forbidOnly: true,
-  retries: 0,
+  // CI (GitHub Actions sets CI=true): one retry and 2 workers for slow shared runners; a test that passes
+  // only on retry is reported as "flaky" and must be investigated. Locally: no retries, default workers.
+  retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? 2 : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    trace: "retain-on-failure",
+    // CI keeps a trace only for the first retry of a failed test; locally every failure keeps one.
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
   },
   projects: [
     { name: "chromium", testIgnore: /mobile\.spec\.ts/, use: { ...devices["Desktop Chrome"] } },
