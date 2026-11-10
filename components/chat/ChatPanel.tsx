@@ -185,7 +185,7 @@ export default function ChatPanel({ open, onClose }: Props) {
     >
       <div className="flex items-center justify-between gap-2 bg-brand-strong py-2 pl-4 pr-1 text-canvas">
         <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" aria-hidden="true" />
+          <span className="flex h-2 w-2 rounded-full bg-accent ring-2 ring-accent/30" aria-hidden="true" />
           <p className="font-heading text-base font-semibold">Ask Northwind Dental</p>
         </div>
         <button
