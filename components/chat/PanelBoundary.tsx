@@ -8,11 +8,44 @@ const BOX =
 
 /** Shown while the lazy chunk is being fetched. */
 export function PanelLoading() {
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  // M3: Move focus to the loading container when mounting so focus is not lost to body
+  useEffect(() => {
+    const el = loadingRef.current;
+    if (!el) return;
+    const active = document.activeElement;
+    const root = el.closest("[data-chat-widget]");
+    if (
+      shouldRefocus({
+        activeIsBodyOrNull: active === null || active === document.body,
+        activeInsideWidget: root !== null && active !== null && root.contains(active),
+      })
+    ) {
+      el.focus();
+    }
+  }, []);
+
   return (
-    <div className={BOX}>
-      <p role="status" className="text-muted">
-        Loading chat...
-      </p>
+    <div
+      ref={loadingRef}
+      tabIndex={-1}
+      className={`${BOX} focus:outline-none`}
+    >
+      <div className="flex items-center gap-2 text-muted">
+        <svg
+          className="h-4 w-4 animate-spin text-brand motion-reduce:hidden"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          aria-hidden="true"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <p role="status">Loading chat...</p>
+      </div>
     </div>
   );
 }
@@ -37,9 +70,16 @@ function PanelFailed({ onRetry, onClose }: { onRetry: () => void; onClose: () =>
   }, []);
 
   return (
-    <div role="dialog" aria-label="Chat" data-testid="chat-panel-error" className={BOX}>
-      <p role="alert" className="font-medium">
-        Chat could not load.
+    <div
+      role="dialog"
+      aria-label="Chat"
+      aria-describedby="chat-boundary-error-msg"
+      data-testid="chat-panel-error"
+      className={BOX}
+    >
+      {/* M1 & M5: Dropped role="alert", added aria-describedby and friendly text */}
+      <p id="chat-boundary-error-msg" className="font-medium text-ink">
+        Chat is unavailable right now.
       </p>
       <div className="mt-3 flex gap-2">
         <button
@@ -47,14 +87,14 @@ function PanelFailed({ onRetry, onClose }: { onRetry: () => void; onClose: () =>
           type="button"
           data-testid="chat-retry"
           onClick={onRetry}
-          className="min-h-11 rounded-lg bg-brand px-4 text-canvas hover:bg-brand-strong motion-safe:transition-colors"
+          className="min-h-11 rounded-lg bg-brand px-4 text-canvas hover:bg-brand-strong motion-safe:transition-colors focus-visible:outline-brand"
         >
           Try again
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="min-h-11 rounded-lg border border-edge px-4 text-ink hover:bg-tint"
+          className="min-h-11 rounded-lg border border-edge px-4 text-ink hover:bg-tint focus-visible:outline-brand"
         >
           Close
         </button>

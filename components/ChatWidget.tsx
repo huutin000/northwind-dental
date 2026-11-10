@@ -37,16 +37,20 @@ export default function ChatWidget() {
     if (open) {
       close();
     } else {
+      // M6: closing and reopening cleans up stale boundary errors
+      setPanel(() => lazy(loadPanel));
+      setAttempt((n) => n + 1);
       setEverOpened(true);
       setOpen(true);
     }
   }
 
-  // Escape closes the panel only when focus is inside the widget (non-modal dialog).
+  // M4: Escape closes the panel only when focus is inside the widget (non-modal dialog),
+  // ignoring keyCode === 229 for Safari IME composition.
   useEffect(() => {
     if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.keyCode === 229) return;
       const root = rootRef.current;
       const active = document.activeElement;
       if (
@@ -64,14 +68,16 @@ export default function ChatWidget() {
   }, [open, close]);
 
   // aria-expanded mirrors the open state. While the chunk loads or failed, the
-  // region still shows a visible "Loading chat..." or "Chat could not load." dialog,
-  // so the expanded claim always points at something real on screen.
+  // region still shows a visible loading or error dialog, so the expanded claim
+  // always points at something real on screen.
   return (
     <div ref={rootRef} data-chat-widget="">
       <div
         id={PANEL_ID}
         hidden={!open}
-        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[calc(max(var(--chat-offset),env(safe-area-inset-bottom))+var(--chat-size)+0.75rem)] z-(--chat-z)"
+        className={`fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[calc(max(var(--chat-offset),env(safe-area-inset-bottom))+var(--chat-size)+0.75rem)] z-(--chat-z) origin-bottom-right transition-all duration-200 ease-out motion-reduce:transition-none ${
+          open ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"
+        }`}
       >
         {everOpened ? (
           <PanelBoundary key={attempt} onRetry={retry} onClose={close}>
@@ -87,9 +93,9 @@ export default function ChatWidget() {
         data-testid="chat-toggle"
         aria-expanded={open}
         aria-controls={PANEL_ID}
-        aria-label={open ? "Close chat" : "Open chat"}
+        aria-label={open ? "Close chat" : "Open chat with Northwind Dental"}
         onClick={toggle}
-        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[max(var(--chat-offset),env(safe-area-inset-bottom))] z-(--chat-z) flex size-(--chat-size) items-center justify-center rounded-full bg-brand text-canvas hover:bg-brand-strong focus-visible:outline-canvas focus-visible:outline-offset-0 focus-visible:shadow-[0_0_0_6px_var(--color-ink)] motion-safe:transition-colors"
+        className="fixed right-[max(var(--chat-offset),env(safe-area-inset-right))] bottom-[max(var(--chat-offset),env(safe-area-inset-bottom))] z-(--chat-z) flex size-(--chat-size) items-center justify-center rounded-full bg-brand text-canvas shadow-lg hover:bg-brand-strong hover:scale-105 active:scale-95 focus-visible:outline-canvas focus-visible:outline-offset-0 focus-visible:shadow-[0_0_0_6px_var(--color-ink)] motion-safe:transition-all"
       >
         {open ? (
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true" focusable="false">

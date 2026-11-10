@@ -14,8 +14,20 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín
 - Accepted exception to "no raw hex": `app/opengraph-image.tsx` and `app/icon.svg` keep raw hex values because they render outside the page CSS and cannot read the tokens. Each file must carry a comment pointing to the `@theme` block in `app/globals.css` with a name-to-hex mapping, and its hex values must equal the token values.
 
 ## Images and illustrations
-- Illustrations are hand-written SVG that follows the palette above. No photos of real people. No new dependencies (no icon packs, no image libraries).
+- AI-generated rendered images created via internal assistant subagent (with WebP compression, strict style consistency: Scandinavian warmth, light oak wood, subtle sky-blue accents, natural daylight, strictly no people, no text, no logos) alongside hand-written SVG illustrations that follow the design tokens. No photos of real people. No new dependencies (no icon packs, no image libraries).
 - Every image has meaningful `alt` text. Purely decorative images and SVGs use `aria-hidden="true"` (and empty `alt` for `<img>`).
+- Priority loading for Hero image (`priority={true}`); lazy loading for all below-the-fold images (`loading="lazy"`).
+- Image budget: Hero <= 110 KB, content images <= 60-95 KB, initial page image payload < 350 KB.
+- Active visuals inventory (all generated WebP images conform strictly to size budgets <= 60-95 KB, hero <= 110 KB, initial payload < 350 KB):
+  * `public/images/hero-clinic.webp` (65.4 KB, 1600x893): Home Hero main feature.
+  * `public/images/cleaning.webp` (17.8 KB, 800x447): Home Bento Grid Hygiene feature.
+  * `public/images/reception.webp` (55.2 KB, 1376x768): Home Gallery slot 1 ("Boutique Reception Desk").
+  * `public/images/treatment-room.webp` (61.3 KB, 1600x893): Home Gallery slot 2 ("Private Operatory Suite").
+  * `public/images/equipment-bay.webp` (47.8 KB, 1376x768): Home Gallery slot 3 ("Digital Diagnostic Bay").
+  * `public/images/welcome.webp` (62.0 KB, 1376x768): Home Gallery slot 4 ("Consultation & Planning Room").
+  * `public/images/waiting-lounge.webp` (48.9 KB, 1376x768): Available in public/images.
+- Services page: uses bespoke hand-crafted SVG clinical icons for all 6 treatments (no image reuse, no crops, no placeholder boxes).
+- Raw assets directory `assets-src/` is ignored via `.gitignore` to prevent repository bloat.
 
 ## ChatWidget performance (Task 7)
 - `ChatWidget` must be lazy-loaded: only the toggle button ships in the initial bundle; the chat UI and its logic load when the user opens the widget (e.g. `next/dynamic` or a dynamic `import()` on first open).

@@ -38,8 +38,8 @@
     0 below md where it scrolls away); used as scroll-padding-top so anchors
     and the skip-link target are not hidden under it.
   Chat slot (Task 7): ChatWidget mounts fixed at bottom-right.
-    --chat-size: launcher button size (56-64 px)
-    --chat-offset: gap from the viewport edges
+    --chat-size: launcher button size (3.5rem / 56px)
+    --chat-offset: gap from the viewport edges (1rem / 16px)
     --chat-z: stacking level (above the sticky header, which is 30)
     --chat-reserve: bottom padding the footer keeps free so nothing is covered.
 */
@@ -48,7 +48,7 @@
   --chat-size: 3.5rem;
   --chat-offset: 1rem;
   --chat-z: 60;
-  --chat-reserve: calc(var(--chat-size) + var(--chat-offset) * 2);
+  --chat-reserve: calc(var(--chat-size) + var(--chat-offset) * 2 + 1.5rem);
 }
 
 @media (min-width: 48rem) {
@@ -59,12 +59,14 @@
 
 html {
   scroll-padding-top: var(--sticky-offset);
+  overflow-x: hidden;
 }
 
 @layer base {
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     font-family: var(--font-heading);
   }
 }
@@ -73,11 +75,50 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  overflow-x: hidden;
+  width: 100%;
 }
 
 :focus-visible {
   outline: 3px solid var(--color-brand);
   outline-offset: 2px;
+}
+
+/*
+  Progressive Enhancement Scroll Reveal:
+  - By default (no JavaScript / SSR): fully visible (opacity: 1, transform: none)
+  - With JavaScript: component mounts, adds 'js-ready', hides element, and animates when intersecting
+*/
+.reveal-on-scroll {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal-on-scroll.js-ready {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-on-scroll.js-ready.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Accordion smooth expansion using CSS grid template rows */
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.accordion-content.is-open {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  overflow: hidden;
 }
 
 /* Gentle sparkle pulse on decorative illustrations. Off for reduced motion. */
@@ -102,6 +143,21 @@ body {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -109,5 +165,14 @@ body {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation: none !important;
+  }
+  .reveal-on-scroll,
+  .reveal-on-scroll.js-ready {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .accordion-content {
+    transition: none !important;
   }
 }
