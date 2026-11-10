@@ -18,7 +18,7 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín
 - Every image has meaningful `alt` text. Purely decorative images and SVGs use `aria-hidden="true"` (and empty `alt` for `<img>`).
 - Priority loading for Hero image (`priority={true}`); lazy loading for all below-the-fold images (`loading="lazy"`).
 - Image budget: Hero <= 110 KB, content images <= 60-95 KB, initial page image payload < 350 KB.
-- Active visuals inventory (all generated WebP images conform strictly to size budgets <= 60-95 KB, hero <= 110 KB, initial payload < 350 KB):
+- Active visuals inventory (sizes above are within the image budget):
   * `public/images/hero-clinic.webp` (65.4 KB, 1600x893): Home Hero main feature.
   * `public/images/cleaning.webp` (17.8 KB, 800x447): Home Bento Grid Hygiene feature.
   * `public/images/reception.webp` (55.2 KB, 1376x768): Home Gallery slot 1 ("Boutique Reception Desk").
@@ -77,7 +77,7 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín
 
 ## Deferred decisions and open status (owner)
 - Lead store has no circuit breaker: `GET /leads` can take about 4 s when Upstash hangs (two sequential requests, 2 s timeout each). Decision: deferred, accepted for the demo build.
-- Task 10 (lead form, `/leads` page) is NOT started: it waits until the owner merges the `design-refresh` branch into `main`. The Task 10 front end must send `Content-Type: application/json` from the same origin (see the request guard below), render stored text as plain text only, and show a friendly message for the 503 "could not save" answer.
+- Task 10 (lead form, `/leads` page) is NOT started: it waits for the owner's go-ahead (the `design-refresh` branch was merged into `main` in `ffb836c`). The Task 10 front end must send `Content-Type: application/json` from the same origin (see the request guard below), render stored text as plain text only, and show a friendly message for the 503 "could not save" answer.
 - Real Upstash is NOT recorded as PASS. It becomes PASS only when the owner pastes a 5/5 result of the live test (`KV_LIVE_TEST=1 node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.live.config.mts`). Claude must not run the live test (it needs the owner's local env file) and must not run plan Task 9 step 4 (the real-store check) before that result exists.
 
 ## Request guard and Task 9/10 rules (owner decisions after the Task 9 review)
@@ -103,7 +103,7 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín
 ## Follow-ups from the Task 7 check (owner to decide)
 - ChatWidget on very wide screens: the toggle stays in the bottom-right corner of the viewport (16 px from the edges) but is 136 px right of the content column at 1440 px and 376 px at 1920 px. Option: anchor it to the content column on wide screens.
 - FIXED (owner-approved fix pass): after a failed send the typed text is restored into the input (only if the input is empty), the unsent bubble is removed and the error note stays; the panel chunk has a hand-written class error boundary with a "Try again" button that really re-imports the chunk; the chat input is focused only when the focus is on `body` or inside the widget; Escape closes only when the focus is inside the widget; the panel scrolls to the bottom when it reopens. Verified in Chrome and independently reviewed (verdict APPROVE).
-- Open MINOR items from that review (owner to decide, none blocks): (M1) `role="alert"` is still on the load-failure box in `PanelBoundary.tsx` (the chat error note no longer has it); drop it and give the dialog `aria-describedby`, or keep it on purpose. (M2) a bubble marked "unsent" looks like a sent one when the visitor already typed a new draft; style it and add an sr-only "(not sent)". (M3) after "Try again" the focused button disappears and focus falls to `body`; focus the loading box (`tabIndex=-1`) when allowed. (M4) ignore `keyCode === 229` in the Escape handler for Safari IME. (M5) the failure box says "Chat could not load." even for a render bug of an already loaded panel; use wording such as "Chat is unavailable right now.". (M6) closing and reopening after a failure shows the stale failure box without retrying. Test gap: only Task 11 scenario 7 and manual checks cover the boundary (no DOM tests exist).
+- FIXED in the `design-refresh` branch (now merged; seen in the code, not re-tested one by one): the MINOR items M1-M6 from that review: no `role="alert"` on the load-failure box (the dialog has `aria-describedby`), an unsent bubble is styled and has an sr-only "(not sent)", the loading box is focused after "Try again", `keyCode === 229` is ignored in the Escape handler, the failure text is "Chat is unavailable right now.", and reopening after a failure retries the import. Still open: the test gap (only Task 11 scenario 7 and manual checks cover the boundary; no DOM tests exist).
 - At the first screen the fixed toggle partly overlaps some wide rows (3-14 percent of the element, never the element's centre): for example the hero button at 320x568 (8 px) and FAQ rows at 360-768 px. It scrolls away; no change planned.
 
 ## Notes for Task 6 and Task 9 (from the M2 review)
