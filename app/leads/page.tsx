@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import Link from "next/link";
 import LeadNotice from "@/components/LeadNotice";
 import { formatLeadDate } from "@/lib/leads/formatDate";
@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
  */
 async function loadLeads(): Promise<Lead[]> {
   try {
-    const cookieHeader = (await cookies()).toString();
+    const cookieHeader = (await headers()).get("cookie") ?? "";
     const sessionId = readSession(new Request("http://localhost/leads", { headers: { cookie: cookieHeader } }));
     const result = await handleListLeads(sessionId, { store: getLeadStore() });
     return result.body.leads;

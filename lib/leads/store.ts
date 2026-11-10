@@ -179,7 +179,21 @@ export function createKvLeadStore(client: KvClient): LeadStore {
 
 // ---------------------------------------------------------------- default
 
-const memoryLeads = createMemoryLeadStore();
+// The default memory store lives on globalThis, not in a module variable: the Next production
+// build evaluates this file once per server chunk (route handler, page render), and dev HMR
+// reloads it, so a module-level store would be a different empty Map in each copy.
+const MEMORY_STORE_KEY = Symbol.for("northwind-dental.memoryLeadStore");
+type GlobalWithStore = typeof globalThis & { [MEMORY_STORE_KEY]?: LeadStore };
+
+function memoryLeads(): LeadStore {
+  const g = globalThis as GlobalWithStore;
+  return (g[MEMORY_STORE_KEY] ??= createMemoryLeadStore());
+}
+
+/** For tests: drop the shared default memory store. */
+export function resetDefaultMemoryLeadStore(): void {
+  delete (globalThis as GlobalWithStore)[MEMORY_STORE_KEY];
+}
 
 // A store for a broken KV configuration: every call fails loudly, so the caller can
 // say "could not save, please try again" instead of silently using per-instance memory.
@@ -194,5 +208,5 @@ const misconfigured: LeadStore = {
 export function getLeadStore(): LeadStore {
   const status = getKvStatus({ timeoutMs: LEAD_STORE_TIMEOUT_MS });
   if (status.state === "ok") return createKvLeadStore(status.client);
-  return status.state === "none" ? memoryLeads : misconfigured;
+  return status.state === "none" ? memoryLeads() : misconfigured;
 }
