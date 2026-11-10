@@ -4,6 +4,7 @@ import DemoBanner from "@/components/DemoBanner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
+import MobileCtaBar from "@/components/MobileCtaBar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,16 +28,16 @@ export const metadata: Metadata = {
     template: "%s | Northwind Dental (demo)",
   },
   description:
-    "Northwind Dental is a fictional dental clinic website built as a demo project.",
+    "Northwind Dental is a fictional boutique dental clinic website built as a demo project.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-canvas text-ink">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-brand focus:px-4 focus:py-2 focus:text-canvas"
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <Footer />
+        <MobileCtaBar />
         <ChatWidget />
       </body>
     </html>

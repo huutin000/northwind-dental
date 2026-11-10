@@ -181,10 +181,13 @@ export default function ChatPanel({ open, onClose }: Props) {
       role="dialog"
       aria-label="Chat with the Northwind Dental demo assistant"
       data-testid="chat-panel"
-      className="flex max-h-[min(34rem,70dvh)] w-[min(24rem,calc(100vw-2*var(--chat-offset)))] flex-col overflow-hidden rounded-2xl border border-edge bg-canvas text-ink shadow-xl"
+      className="flex max-h-[min(34rem,70dvh)] w-[min(24rem,calc(100vw-2*var(--chat-offset)))] flex-col overflow-hidden rounded-2xl border border-edge bg-canvas text-ink shadow-2xl"
     >
-      <div className="flex items-center justify-between gap-2 bg-brand-strong py-1 pl-4 pr-1 text-canvas">
-        <p className="font-heading text-base font-semibold">Ask Northwind Dental</p>
+      <div className="flex items-center justify-between gap-2 bg-brand-strong py-2 pl-4 pr-1 text-canvas">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" aria-hidden="true" />
+          <p className="font-heading text-base font-semibold">Ask Northwind Dental</p>
+        </div>
         <button
           type="button"
           data-testid="chat-close"
@@ -208,15 +211,34 @@ export default function ChatPanel({ open, onClose }: Props) {
       >
         {messages.map((m) => {
           if (m.role === "user") {
+            const isUnsent = m.kind === "unsent";
             return (
-              <div key={m.id} data-testid="chat-message-user" className="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-brand px-3 py-2 text-sm text-canvas">
+              <div
+                key={m.id}
+                data-testid="chat-message-user"
+                className={`max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-3 py-2 text-sm transition-all motion-safe:animate-fade-in ${
+                  isUnsent
+                    ? "border border-dashed border-edge/80 bg-tint text-ink/90 opacity-90"
+                    : "bg-brand text-canvas"
+                }`}
+              >
                 {m.content}
+                {isUnsent ? (
+                  <span className="mt-1 block text-right text-[11px] font-medium text-muted">
+                    <span className="sr-only"> (not sent)</span>
+                    Draft not sent
+                  </span>
+                ) : null}
               </div>
             );
           }
           if (m.kind === "error") {
             return (
-              <p key={m.id} data-testid="chat-error" className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg border border-notice-ink bg-notice px-3 py-2 text-sm text-notice-ink">
+              <p
+                key={m.id}
+                data-testid="chat-error"
+                className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg border border-notice-ink/50 bg-notice px-3 py-2 text-sm text-notice-ink motion-safe:animate-fade-in"
+              >
                 {m.content}
               </p>
             );
@@ -226,7 +248,7 @@ export default function ChatPanel({ open, onClose }: Props) {
             <div
               key={m.id}
               data-testid={m.kind === "greeting" ? "chat-greeting" : "chat-message-assistant"}
-              className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-line bg-tint px-3 py-2 text-sm text-ink"
+              className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-line bg-tint px-3 py-2 text-sm text-ink motion-safe:animate-fade-in"
             >
               {m.content}
               {label ? (
@@ -238,9 +260,17 @@ export default function ChatPanel({ open, onClose }: Props) {
           );
         })}
         {pending ? (
-          <p role="status" className="self-start text-sm text-muted">
-            Thinking...
-          </p>
+          <div
+            role="status"
+            aria-label="Thinking"
+            className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md border border-line bg-tint px-3.5 py-2.5 text-sm text-ink"
+          >
+            <span className="sr-only">Thinking...</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse motion-reduce:hidden" />
+            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse [animation-delay:200ms] motion-reduce:hidden" />
+            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse [animation-delay:400ms] motion-reduce:hidden" />
+            <span className="text-xs text-muted">Consulting clinic notes...</span>
+          </div>
         ) : null}
       </div>
 
@@ -260,14 +290,14 @@ export default function ChatPanel({ open, onClose }: Props) {
             autoComplete="off"
             placeholder="Type your question"
             aria-describedby={input.length >= COUNTER_FROM ? counterId : undefined}
-            className="min-h-11 min-w-0 flex-1 rounded-lg border border-edge bg-canvas px-3 text-base text-ink placeholder:text-muted"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-edge bg-canvas px-3 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-1 focus:ring-brand"
           />
           <button
             type="submit"
             data-testid="chat-send"
             disabled={!canSend}
             aria-label="Send message"
-            className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-tint-strong disabled:text-disabled motion-safe:transition-colors"
+            className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-tint-strong disabled:text-disabled motion-safe:transition-colors focus-visible:outline-brand"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false">
               <path d="M3.4 20.4 21 12 3.4 3.6 3.3 10.1 15 12 3.3 13.9z" />
