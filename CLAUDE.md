@@ -3,9 +3,10 @@
 Project role: dev
 Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín. Replies to the owner are in Vietnamese; everything written into this repo is English.
 
-## UI work: always use the frontend-design skill
-- Every UI task (pages, components, layout, colors, images, illustrations) MUST use the skill `frontend-design:frontend-design`.
-- Get the exact skill name from the skill list (`/skills`) and invoke it BEFORE writing any UI code. If it is not available, stop and report BLOCKED; do not write UI code without it.
+## UI work: use the frontend-design skill for new visual design
+- A new screen, a redesign, a new component family or any change of visual direction (pages, components, layout, colors, images, illustrations) MUST use the skill `frontend-design:frontend-design`.
+- Get the exact skill name from the skill list (`/skills`) and invoke it BEFORE writing that UI code. If it is not available, stop and report BLOCKED; do not write that UI code without it.
+- An isolated CSS, spacing, color, text or responsive fix inside the current design reuses the existing design tokens and needs only a targeted check (measured contrast for a color change, a real browser look when the appearance changes). The skill is not required unless the fix needs a new design decision.
 
 ## Color and design tokens
 - Dominant tone: sky blue. Primary buttons use `sky-700` (#0369a1) or darker so white text reaches a contrast of at least 4.5:1. Light backgrounds use `sky-50`.
