@@ -77,7 +77,7 @@ export default function FaqInteractive() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search the FAQ"
-            className="w-full min-h-12 rounded-control border-[1.5px] border-edge bg-surface pl-11 pr-12 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/20 transition-colors"
+            className="w-full min-h-12 rounded-control border-[1.5px] border-edge bg-surface pl-11 pr-12 text-base text-ink placeholder:text-muted [&::-webkit-search-cancel-button]:appearance-none focus:border-brand focus:ring-3 focus:ring-brand/20 transition-colors"
           />
           <svg
             className="pointer-events-none absolute left-3.5 size-4 text-muted"
