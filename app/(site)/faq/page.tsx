@@ -1,65 +1,61 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SparkleCluster } from "@/components/illustrations/Decor";
 import FaqInteractive from "@/components/faq/FaqInteractive";
 
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Clear, transparent answers to questions about booking, opening hours, dental fees, procedure durations, and post-visit aftercare at Northwind Dental.",
+    "Answers about booking, opening hours, costs and what happens at a visit at Northwind Dental.",
 };
+
+const eyebrow = "text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-brand";
+const h2 = "text-[clamp(1.75rem,1.1rem+2.2vw,2.5rem)] leading-[1.15] text-ink";
+const btn =
+  "inline-flex min-h-12 w-full items-center justify-center rounded-button border-2 px-6 py-3 text-center font-semibold leading-tight transition-colors sm:w-auto";
+const btnPrimary = `${btn} border-transparent bg-brand text-canvas hover:bg-brand-strong`;
+const btnPeach = `${btn} border-transparent bg-peach text-ink hover:bg-peach-strong`;
 
 export default function FaqPage() {
   return (
-    <div className="space-y-12 sm:space-y-16">
-      {/* Page Header */}
-      <section className="relative overflow-hidden rounded-[2.5rem] border border-line bg-gradient-to-br from-tint via-canvas to-tint-strong p-6 sm:p-10 lg:p-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="max-w-xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas/80 px-3.5 py-1.5 text-xs font-semibold text-brand backdrop-blur-sm">
-              <span className="size-2 rounded-full bg-brand" aria-hidden="true" />
-              <span>Patient Knowledge Base</span>
-            </div>
+    <>
+      <section className="pb-[clamp(1.5rem,4vw,2.5rem)] pt-[clamp(1.5rem,4vw,4.5rem)]">
+        <div className="page-wrap grid justify-items-start gap-4">
+          <p className={`${eyebrow} motion-safe:animate-rise`}>FAQ</p>
+          <h1 className="text-[clamp(2.125rem,1.3rem+3.6vw,3.625rem)] leading-[1.08] text-ink">
+            Frequently Asked Questions
+          </h1>
+          <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-muted motion-safe:animate-rise motion-safe:[animation-delay:0.1s]">
+            Answers about opening hours, booking, services, costs and what happens at a visit. Search, or open a topic
+            below.
+          </p>
+        </div>
+      </section>
 
-            <h1 className="font-heading text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-              Frequently Asked Questions
-            </h1>
+      <div className="page-wrap">
+        <FaqInteractive />
+      </div>
 
-            <p className="text-sm sm:text-base text-muted leading-relaxed">
-              Find instant answers about our appointments, fees, gentle hygiene methods, and what to expect during your first visit to Northwind Dental.
+      <section className="py-[clamp(3rem,8vw,6rem)]" aria-labelledby="faq-ask-heading">
+        <div className="page-wrap">
+          <div className="relative isolate grid justify-items-start gap-4 overflow-hidden rounded-panel bg-tint-strong p-[clamp(1.75rem,6vw,4rem)] after:absolute after:-bottom-20 after:-right-15 after:-z-10 after:size-55 after:rounded-full after:bg-wash">
+            <h2 id="faq-ask-heading" className={h2}>
+              Not answered here?
+            </h2>
+            <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
+              Send a request through the contact page, or look at what each service involves. The demo chat assistant
+              in the corner can also answer from this list.
             </p>
+            <div className="mt-1.5 flex w-full flex-wrap gap-3">
+              <Link href="/contact" className={btnPrimary}>
+                Contact us
+              </Link>
+              <Link href="/services" className={btnPeach}>
+                See services
+              </Link>
+            </div>
           </div>
-
-          <SparkleCluster className="hidden h-auto w-24 shrink-0 sm:block text-brand" />
         </div>
       </section>
-
-      {/* Interactive FAQ with Search & Accordion */}
-      <FaqInteractive />
-
-      {/* Still have questions block */}
-      <section className="rounded-3xl border border-line bg-tint-strong p-6 text-center sm:p-10">
-        <h2 className="font-heading text-xl sm:text-2xl font-bold text-ink">
-          Still have a question not covered here?
-        </h2>
-        <p className="mt-2 text-xs sm:text-sm text-muted max-w-md mx-auto">
-          Our virtual assistant is available 24/7 in the bottom-right corner, or you can send a note directly to our reception team.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/contact"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 text-xs sm:text-sm font-semibold text-canvas hover:bg-brand-strong transition-all"
-          >
-            Contact our reception
-          </Link>
-          <Link
-            href="/services"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-edge/60 bg-canvas px-6 text-xs sm:text-sm font-semibold text-ink hover:bg-tint transition-colors"
-          >
-            Review treatments
-          </Link>
-        </div>
-      </section>
-    </div>
+    </>
   );
 }

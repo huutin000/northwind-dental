@@ -191,18 +191,21 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
       role="dialog"
       aria-label="Chat with the Northwind Dental demo assistant"
       data-testid="chat-panel"
-      className="flex max-h-[min(34rem,70dvh)] w-[min(24rem,calc(100vw-2*var(--chat-offset)))] flex-col overflow-hidden rounded-2xl border border-edge bg-canvas text-ink shadow-2xl"
+      className="flex max-h-[min(36rem,calc(100dvh-var(--chat-bottom)-var(--chat-size)-1.25rem))] w-[min(24.5rem,calc(100vw-2*var(--chat-offset)))] flex-col overflow-hidden rounded-panel border border-line bg-surface text-ink shadow-panel"
     >
-      <div className="flex items-center justify-between gap-2 bg-brand-strong py-2 pl-4 pr-1 text-canvas">
-        <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-accent ring-2 ring-accent/30" aria-hidden="true" />
-          <p className="font-heading text-base font-semibold">Ask Northwind Dental</p>
+      <div className="flex items-center justify-between gap-2 bg-brand py-2.5 pl-5 pr-2 text-canvas">
+        <div className="flex items-center gap-3">
+          <span className="flex size-2.5 shrink-0 rounded-full bg-accent ring-4 ring-accent/30" aria-hidden="true" />
+          <div>
+            <p className="font-heading text-lg leading-tight">Ask Northwind Dental</p>
+            <p className="text-xs leading-tight">Demo assistant</p>
+          </div>
         </div>
         <button
           type="button"
           data-testid="chat-close"
           onClick={onClose}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm hover:bg-brand focus-visible:outline-canvas focus-visible:outline-offset-0"
+          className="on-brand inline-flex min-h-11 items-center gap-1.5 rounded-control px-3 text-sm font-medium hover:bg-brand-strong"
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true" focusable="false">
             <path d="M6 6l12 12M18 6L6 18" />
@@ -217,7 +220,7 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
         aria-live="polite"
         aria-relevant="additions"
         aria-label="Conversation"
-        className="flex min-h-40 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden bg-canvas px-3 py-3"
+        className="flex min-h-24 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden bg-canvas px-4 py-4"
       >
         {messages.map((m) => {
           if (m.role === "user") {
@@ -226,15 +229,15 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
               <div
                 key={m.id}
                 data-testid="chat-message-user"
-                className={`max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-3 py-2 text-sm transition-all motion-safe:animate-fade-in ${
+                className={`max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[0.96875rem] leading-normal transition-all motion-safe:animate-fade-in ${
                   isUnsent
-                    ? "border border-dashed border-edge/80 bg-tint text-ink/90 opacity-90"
+                    ? "border-[1.5px] border-dashed border-error-ink bg-transparent text-ink"
                     : "bg-brand text-canvas"
                 }`}
               >
                 {m.content}
                 {isUnsent ? (
-                  <span className="mt-1 block text-right text-[11px] font-medium text-muted">
+                  <span className="mt-1 block text-right text-xs font-medium text-muted">
                     <span className="sr-only"> (not sent)</span>
                     Draft not sent
                   </span>
@@ -247,9 +250,13 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
               <p
                 key={m.id}
                 data-testid="chat-error"
-                className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-lg border border-notice-ink/50 bg-notice px-3 py-2 text-sm text-notice-ink motion-safe:animate-fade-in"
+                className="flex max-w-[85%] items-start gap-2 self-start whitespace-pre-wrap break-words rounded-control bg-error px-3 py-2.5 text-[0.9375rem] text-error-ink motion-safe:animate-fade-in"
               >
-                {m.content}
+                <svg className="mt-0.5 size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4M12 16h.01" />
+                </svg>
+                <span className="min-w-0">{m.content}</span>
               </p>
             );
           }
@@ -258,18 +265,18 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
             <div
               key={m.id}
               data-testid={m.kind === "greeting" ? "chat-greeting" : "chat-message-assistant"}
-              className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-line bg-tint px-3 py-2 text-sm text-ink motion-safe:animate-fade-in"
+              className="max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-sm border border-line bg-surface px-3.5 py-2.5 text-[0.96875rem] leading-normal text-ink motion-safe:animate-fade-in"
             >
               {m.content}
               {label ? (
-                <span data-testid="chat-source" className="mt-2 block w-fit rounded-full bg-tint-strong px-2 py-0.5 text-xs text-muted">
+                <span data-testid="chat-source" className="mt-2 block w-fit rounded-full bg-tint-strong px-2.5 py-0.5 text-xs font-semibold text-ink">
                   {label}
                 </span>
               ) : null}
               {m.kind === "turn" && showsContactHint(m.source) ? (
                 <p
                   data-testid="chat-contact-hint"
-                  className="mt-2 border-t border-line pt-1 text-xs text-ink"
+                  className="mt-3 rounded-control bg-sand px-3 py-2 text-[0.9375rem] text-ink"
                 >
                   Prefer to talk to the team?{" "}
                   <Link
@@ -292,18 +299,18 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
           <div
             role="status"
             aria-label="Thinking"
-            className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md border border-line bg-tint px-3.5 py-2.5 text-sm text-ink"
+            className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-sm border border-line bg-surface px-3.5 py-3 text-sm text-ink"
           >
             <span className="sr-only">Thinking...</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse motion-reduce:hidden" />
-            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse [animation-delay:200ms] motion-reduce:hidden" />
-            <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse [animation-delay:400ms] motion-reduce:hidden" />
+            <span className="size-2 rounded-full bg-muted motion-safe:animate-pulse motion-reduce:hidden" />
+            <span className="size-2 rounded-full bg-muted motion-safe:animate-pulse [animation-delay:200ms] motion-reduce:hidden" />
+            <span className="size-2 rounded-full bg-muted motion-safe:animate-pulse [animation-delay:400ms] motion-reduce:hidden" />
             <span className="text-xs text-muted">Consulting clinic notes...</span>
           </div>
         ) : null}
       </div>
 
-      <form onSubmit={onSubmit} className="border-t border-line bg-canvas p-3">
+      <form onSubmit={onSubmit} className="border-t border-line bg-surface p-3">
         <label htmlFor={inputId} className="sr-only">
           Your message
         </label>
@@ -319,14 +326,14 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
             autoComplete="off"
             placeholder="Type your question"
             aria-describedby={input.length >= COUNTER_FROM ? counterId : undefined}
-            className="min-h-11 min-w-0 flex-1 rounded-lg border border-edge bg-canvas px-3 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-1 focus:ring-brand"
+            className="min-h-12 min-w-0 flex-1 rounded-control border-[1.5px] border-edge bg-surface px-3.5 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/20"
           />
           <button
             type="submit"
             data-testid="chat-send"
             disabled={!canSend}
             aria-label="Send message"
-            className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-tint-strong disabled:text-disabled motion-safe:transition-colors focus-visible:outline-brand"
+            className="flex size-12 shrink-0 items-center justify-center rounded-button bg-brand text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-tint-strong disabled:text-disabled motion-safe:transition-colors"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false">
               <path d="M3.4 20.4 21 12 3.4 3.6 3.3 10.1 15 12 3.3 13.9z" />

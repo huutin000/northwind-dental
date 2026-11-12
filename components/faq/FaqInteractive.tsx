@@ -76,8 +76,8 @@ export default function FaqInteractive() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search questions (e.g., hours, cleaning, fillings, cost)..."
-            className="w-full min-h-12 rounded-2xl border border-edge bg-canvas pl-11 pr-10 text-sm text-ink placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm transition-all"
+            placeholder="Search the FAQ"
+            className="w-full min-h-12 rounded-control border-[1.5px] border-edge bg-surface pl-11 pr-12 text-base text-ink placeholder:text-muted [&::-webkit-search-cancel-button]:appearance-none focus:border-brand focus:ring-3 focus:ring-brand/20 transition-colors"
           />
           <svg
             className="pointer-events-none absolute left-3.5 size-4 text-muted"
@@ -95,9 +95,9 @@ export default function FaqInteractive() {
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear search query"
-              className="absolute right-3 inline-flex size-6 items-center justify-center rounded-full text-muted hover:bg-tint hover:text-ink text-xs"
+              className="group absolute right-0.5 inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-ink text-xs"
             >
-              ✕
+              <span className="inline-flex size-6 items-center justify-center rounded-full group-hover:bg-tint" aria-hidden="true">✕</span>
             </button>
           ) : null}
         </div>
@@ -111,8 +111,8 @@ export default function FaqInteractive() {
 
       {/* Questions Group List */}
       {filteredGroups.length === 0 ? (
-        <div className="rounded-3xl border border-line bg-tint/60 p-8 text-center max-w-lg mx-auto">
-          <p className="font-heading text-lg font-semibold text-ink">
+        <div className="rounded-card border border-line bg-surface p-8 text-center max-w-lg mx-auto">
+          <p className="font-heading text-xl text-ink">
             No questions match &ldquo;{query}&rdquo;
           </p>
           <p className="mt-2 text-xs text-muted">
@@ -121,7 +121,7 @@ export default function FaqInteractive() {
           <button
             type="button"
             onClick={() => setQuery("")}
-            className="mt-4 inline-flex min-h-10 items-center rounded-full bg-brand px-5 text-xs font-semibold text-canvas hover:bg-brand-strong"
+            className="mt-4 inline-flex min-h-11 items-center rounded-button bg-brand px-5 text-sm font-semibold text-canvas hover:bg-brand-strong"
           >
             Show all questions
           </button>
@@ -135,12 +135,12 @@ export default function FaqInteractive() {
               className="space-y-4"
             >
               <div className="flex items-center gap-3 border-b border-line pb-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-tint font-heading text-xs font-bold text-brand">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-tint font-heading text-xs text-brand">
                   0{groupIndex + 1}
                 </span>
                 <h2
                   id={`faq-group-${groupIndex}`}
-                  className="font-heading text-xl sm:text-2xl font-bold text-brand-strong"
+                  className="font-heading text-xl sm:text-2xl text-brand-strong"
                 >
                   {groupName}
                 </h2>
@@ -152,13 +152,13 @@ export default function FaqInteractive() {
                   return (
                     <div
                       key={item.id}
-                      className="overflow-hidden rounded-2xl border border-line bg-canvas transition-colors hover:border-edge/60"
+                      className="overflow-hidden rounded-card border border-line bg-surface"
                     >
                       <button
                         type="button"
                         aria-expanded={isOpen}
                         onClick={() => toggleItem(item.id)}
-                        className="flex min-h-12 w-full items-center justify-between gap-4 px-5 py-3.5 text-left font-heading text-sm sm:text-base font-semibold text-ink hover:bg-tint/50 focus-visible:outline-brand transition-colors"
+                        className="focus-inset flex min-h-14 w-full items-center justify-between gap-4 px-5 py-3.5 text-left text-[1.0625rem] font-semibold text-ink hover:bg-tint motion-safe:transition-colors"
                       >
                         <span className="flex-1">{item.question}</span>
                         <Chevron open={isOpen} />
@@ -169,8 +169,8 @@ export default function FaqInteractive() {
                         aria-hidden={!isOpen}
                       >
                         <div className="accordion-inner">
-                          {/* Desktop spacing adjustment to prevent cramped focus ring */}
-                          <div className="border-t border-line/60 bg-tint/30 px-5 pt-3 pb-4 text-xs sm:text-sm text-muted leading-relaxed">
+                          {/* The row ring is drawn inside the button (focus-inset); the answer keeps 12px of top padding. */}
+                          <div className="px-5 pt-3 pb-5 text-[0.9375rem] text-muted leading-relaxed">
                             <p>{item.answer}</p>
                           </div>
                         </div>

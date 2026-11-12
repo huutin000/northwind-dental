@@ -19,17 +19,36 @@ type Status = "idle" | "sending" | "success";
 type FocusTarget = LeadField | "summary" | "success";
 
 const fieldClass =
-  "mt-1.5 block min-h-11 w-full rounded-xl border bg-canvas px-3.5 py-2.5 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20";
+  "mt-1.5 block min-h-12 w-full rounded-control bg-surface px-3.5 py-3 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/20";
 const labelClass = "block text-sm font-semibold text-ink";
 const hintClass = "mt-1 text-xs text-muted";
+
+function ErrorIcon() {
+  return (
+    <svg
+      className="mt-0.5 size-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" />
+    </svg>
+  );
+}
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
     <p
       id={id}
-      className="mt-1.5 flex items-start gap-2 rounded-lg bg-notice px-3 py-2 text-sm text-notice-ink"
+      className="mt-1.5 flex items-start gap-2 rounded-control bg-error px-3 py-2 text-[0.9375rem] font-medium text-error-ink"
     >
+      <ErrorIcon />
       <span className="font-semibold">Error:</span>
       <span className="min-w-0 break-words">{message}</span>
     </p>
@@ -135,17 +154,17 @@ export default function LeadForm() {
           tabIndex={-1}
           role="status"
           data-testid="lead-success"
-          className="space-y-3 rounded-2xl border border-line bg-tint p-5 text-ink"
+          className="space-y-3 rounded-card bg-success p-5 text-ink"
         >
-          <h3 className="font-heading text-lg font-bold">Request received</h3>
-          <p className="text-sm leading-relaxed text-muted">
+          <h3 className="font-heading text-xl text-success-ink">Request received</h3>
+          <p className="text-[0.9375rem] leading-relaxed text-ink">
             Your request was saved for this demo and will be deleted after 24 hours.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/leads"
               data-testid="lead-view-link"
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-canvas hover:bg-brand-strong"
+              className="inline-flex min-h-11 items-center justify-center rounded-button bg-brand px-6 py-2.5 text-[0.9375rem] font-semibold text-canvas hover:bg-brand-strong"
             >
               View your request
             </Link>
@@ -155,7 +174,7 @@ export default function LeadForm() {
                 setStatus("idle");
                 requestFocus("email");
               }}
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-edge px-6 py-2.5 text-sm font-semibold text-ink hover:bg-tint"
+              className="inline-flex min-h-11 items-center justify-center rounded-button border-[1.5px] border-edge px-6 py-2.5 text-[0.9375rem] font-semibold text-ink hover:bg-surface"
             >
               Send another request
             </button>
@@ -168,7 +187,7 @@ export default function LeadForm() {
   const sending = status === "sending";
   const describedBy = (field: LeadField, hint: string) =>
     errors[field] ? `lead-${field}-error ${hint}` : hint;
-  const border = (field: LeadField) => (errors[field] ? "border-2 border-notice-ink" : "border-edge");
+  const border = (field: LeadField) => (errors[field] ? "border-2 border-error-ink" : "border-[1.5px] border-edge");
 
   return (
     <form onSubmit={onSubmit} noValidate className="relative space-y-5" aria-busy={sending}>
@@ -265,8 +284,11 @@ export default function LeadForm() {
       {/* Submit errors: a live region that is always mounted, so the text is announced when it appears. */}
       <div ref={summaryRef} tabIndex={-1} aria-live="assertive" data-testid="lead-error">
         {formError && (
-          <p className="rounded-xl bg-notice px-4 py-3 text-sm font-medium text-notice-ink">
-            <span className="font-semibold">Error:</span> {formError}
+          <p className="flex items-start gap-2 rounded-control bg-error px-3.5 py-3 text-[0.9375rem] font-medium text-error-ink">
+            <ErrorIcon />
+            <span className="min-w-0 break-words">
+              <span className="font-semibold">Error:</span> {formError}
+            </span>
           </p>
         )}
       </div>
@@ -276,7 +298,7 @@ export default function LeadForm() {
           type="submit"
           disabled={sending}
           data-testid="lead-submit"
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-brand px-8 py-3 text-sm font-semibold text-canvas shadow-sm hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-disabled sm:w-auto"
+          className="inline-flex min-h-12 w-full items-center justify-center rounded-button bg-brand px-8 py-3 text-[0.9375rem] font-semibold text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-disabled disabled:text-canvas sm:w-auto"
         >
           {sending ? "Sending…" : "Send request"}
         </button>
