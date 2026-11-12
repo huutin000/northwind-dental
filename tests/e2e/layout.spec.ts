@@ -31,6 +31,15 @@ for (const route of ROUTES) {
         clientWidth,
       );
 
+      const body = await page.evaluate(() => ({
+        scrollWidth: document.body.scrollWidth,
+        clientWidth: document.body.clientWidth,
+      }));
+      expect(
+        body.scrollWidth,
+        `${where}: body scrollWidth ${body.scrollWidth} > body clientWidth ${body.clientWidth}`,
+      ).toBeLessThanOrEqual(body.clientWidth);
+
       await expect(page.getByTestId("demo-banner"), `${where}: demo banner`).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" }), `${where}: main navigation`).toBeVisible();
       await expect(page.getByRole("heading", { level: 1 }), `${where}: h1`).toBeVisible();
