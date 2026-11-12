@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { waitForHydration } from "./helpers";
 
 // Header behaviour: the phone Menu disclosure (UI-CONTRACT item 15) and the sticky header.
 // Selectors: roles only. No fixed sleeps.
@@ -14,17 +15,11 @@ function navLink(page: Page, name: string) {
   return page.getByRole("navigation", { name: "Main" }).getByRole("link", { name, exact: true });
 }
 
-/**
- * Presses Menu until it reports aria-expanded="true". The Menu button has no test id, so the React-hydration
- * helper does not apply; a click that lands before hydration is lost, so it is repeated ONLY while the menu is
- * still closed (once open, no further click is sent, so it can never close it again).
- */
+/** Clicks Menu once and asserts it opened. Call only on an already hydrated page. */
 async function openMenu(page: Page): Promise<void> {
   const button = menuButton(page);
-  await expect(async () => {
-    if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
-    await expect(button).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
-  }).toPass({ timeout: 15_000 });
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
 }
 
 test.describe("phone Menu", () => {
@@ -32,6 +27,10 @@ test.describe("phone Menu", () => {
 
   test("closed state, ARIA wiring, open, Escape and link click", async ({ page }) => {
     await page.goto("/");
+    // The Menu button has no test id, so readiness is read from the chat toggle. ASSUMPTION: <Header /> renders
+    // before <ChatWidget /> in app/layout.tsx, so React hydrates the Header first; once the toggle carries React's
+    // marker the Menu handler is attached. If that order changes, give the Menu button a test id and wait on it.
+    await waitForHydration(page, "chat-toggle");
     const button = menuButton(page);
 
     // Closed by default.
