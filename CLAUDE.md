@@ -1,7 +1,7 @@
 # Northwind Dental — project rules (standing)
 
 Project role: dev
-Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín. Replies to the owner are in Vietnamese; everything written into this repo is English.
+Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese; local only, gitignored, not part of the repository). Owner: Hữu Tín. Replies to the owner are in Vietnamese; everything written into this repo is English.
 
 ## UI work: use the frontend-design skill for new visual design
 - A new screen, a redesign, a new component family or any change of visual direction (pages, components, layout, colors, images, illustrations) MUST use the skill `frontend-design:frontend-design`.
@@ -61,7 +61,7 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese). Owner: Hữu Tín
 - retrieve: splitting negative contractions leaves stems that are not stopwords (`don`, `doesn`, `isn`, `aren`, `won`, `didn`, `haven`, `wouldn`, plus "why"). Example: "Why doesn't the clinic open on Sundays?" scores 1/3 = 0.333 (< 0.35). Since the owner's routing decision `handleChat` no longer gates on the threshold (the model is called for any match), so this is now only a scoring-quality item (it still matters for the fallback ordering and for `retrieve` tests). Fix: add those stems and "why" to `STOPWORDS` and add a fixture row for that question.
 - redactPII: because the email local part accepts `\p{L}`, in scripts written without spaces (for example Chinese) it can swallow up to 64 letters before the "@": "请发到abc@x.com" becomes "[email]" (over-redaction, nothing leaks). Add it to the `redactPII.ts` header and pin it with a test. It is already in the README "Limitations" list below.
 - tests: no test covers U+FEFF, U+2060, U+200C/D and U+202B-202D in `INVISIBLE`; removing U+FEFF would still pass. Add rows for them.
-- `doc/northwind-dental-HANDOFF.md` still names `vitest.config.ts` (now `vitest.config.mts`); the doc is untracked and is the owner's file, so only mention it.
+- `doc/northwind-dental-HANDOFF.md` still names `vitest.config.ts` (now `vitest.config.mts`); the doc is local only, gitignored, not part of the repository and is the owner's file, so only mention it.
 
 ## Deferred MINOR findings (Task 5-6 review; items 1-4 were fixed on the owner's approval, only the last stays open)
 - FIXED: the redact-before-truncate test now uses NFKC-expanding characters (mutation-checked); `ProviderError.message` is logged only when it matches `/^[\w .:-]{1,60}$/`; the log call is wrapped in its own try/catch; the fallback paths return the out-of-scope reply when the best score is below `OUT_OF_SCOPE_THRESHOLD`.

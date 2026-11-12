@@ -54,3 +54,7 @@ assets-src/
 playwright-report/
 test-results/
 blob-report/
+
+# local planning docs and agent settings (not part of the repository)
+/doc/
+.claude/
