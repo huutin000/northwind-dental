@@ -199,7 +199,7 @@ export default function HomePage() {
             We also offer children&apos;s dentistry.{" "}
             <Link
               href="/services"
-              className="font-semibold text-brand underline underline-offset-4 hover:text-brand-strong"
+              className="inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4 hover:text-brand-strong"
             >
               See all services
             </Link>

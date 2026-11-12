@@ -76,8 +76,8 @@ export default function FaqInteractive() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search questions (e.g., hours, cleaning, fillings, cost)..."
-            className="w-full min-h-12 rounded-control border-[1.5px] border-edge bg-surface pl-11 pr-10 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/20 transition-colors"
+            placeholder="Search the FAQ"
+            className="w-full min-h-12 rounded-control border-[1.5px] border-edge bg-surface pl-11 pr-12 text-base text-ink placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-brand/20 transition-colors"
           />
           <svg
             className="pointer-events-none absolute left-3.5 size-4 text-muted"
@@ -95,9 +95,9 @@ export default function FaqInteractive() {
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear search query"
-              className="absolute right-3 inline-flex size-6 items-center justify-center rounded-full text-muted hover:bg-tint hover:text-ink text-xs"
+              className="group absolute right-0.5 inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-ink text-xs"
             >
-              ✕
+              <span className="inline-flex size-6 items-center justify-center rounded-full group-hover:bg-tint" aria-hidden="true">✕</span>
             </button>
           ) : null}
         </div>
