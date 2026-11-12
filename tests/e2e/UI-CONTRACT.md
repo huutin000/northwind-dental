@@ -84,7 +84,10 @@ Lead
 
 Layout
 14. No horizontal overflow (`scrollWidth <= clientWidth`) at the widths used by the sweep, on every route.
-15. The demo banner, header navigation and the main controls of each route stay visible at those widths.
+15. The demo banner and the main controls of each route stay visible at those widths. The header navigation (`navigation` named "Main") is always in the DOM and has two modes:
+    - From 768 px up (Tailwind `md`): the four links (Services, Approach, FAQ, Contact) and "Book a visit" are visible inline.
+    - Below 768 px: the links are collapsed behind a button named "Menu" (`getByRole("button", { name: "Menu" })`). This is a DELIBERATE DEVIATION from "navigation stays visible": on phones the links are hidden until the menu is opened. Tests must open the menu before looking for a link at those widths.
+    - Required behaviour of the Menu button (`components/Header.tsx`): it has `aria-expanded` (`false` closed, `true` open) and `aria-controls="main-menu"`, which is the `id` of the link list. Opening it shows the links. `Escape` closes it and returns focus to the Menu button (it only reacts when focus is inside the navigation or on `body`; Escape with focus elsewhere, for example in the chat widget, is left alone). Activating any link closes the menu (and navigates). A route change also closes it.
 
 ## API contract (request fixture tests)
 
