@@ -87,14 +87,14 @@ It uses port 3401, never uses the key-value store, and stops with a clear error 
 
 ## Performance
 
-Measured on 2026-11-13 against the live site (https://northwind-dental.vercel.app/) with Lighthouse 13.5.0, run through `npx` (not installed in the project), default mobile preset, 3 runs per page; the table shows the median of the 3 runs. Conditions: headless Chrome 157 on a Windows PC in Vietnam, Lighthouse's default simulated throttling. Scores and timings change from run to run and with network conditions, so treat them as a snapshot, not a guarantee. `/leads` was not measured.
+Measured on 2026-11-13 (about 03:47 to 03:50 UTC), after the security headers and icons were live, against the live site (https://northwind-dental.vercel.app/) with Lighthouse 13.5.0, run through `npx` (not installed in the project), default mobile preset, 3 runs per page; the table shows the median of the 3 runs. Conditions: headless Chrome 157 on a Windows PC in Vietnam, Lighthouse's default simulated throttling. Scores and timings change from run to run and with network conditions, so treat them as a snapshot, not a guarantee. `/leads` was not measured.
 
 | Page | Performance | Accessibility | Best Practices | SEO | LCP (ms) | CLS | TBT (ms) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/` | 99 | 100 | 100 | 100 | 2163 | 0 | 61 |
-| `/services` | 99 | 100 | 100 | 100 | 2004 | 0 | 62 |
-| `/faq` | 99 | 100 | 100 | 100 | 2132 | 0 | 61 |
-| `/contact` | 99 | 100 | 100 | 100 | 2126 | 0 | 63 |
+| `/` | 99 | 100 | 100 | 100 | 2118 | 0 | 61 |
+| `/services` | 99 | 100 | 100 | 100 | 2018 | 0 | 63 |
+| `/faq` | 99 | 100 | 100 | 100 | 2008 | 0 | 64 |
+| `/contact` | 99 | 100 | 100 | 100 | 2070 | 0 | 53 |
 
 ## Run locally
 
