@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 // Security headers set in next.config.ts for every route. The values are asserted exactly.
-// Referrer-Policy must stay strict-origin-when-cross-origin: with "no-referrer" a same-origin
-// fetch POST may carry `Origin: null`, which the request guard rejects with 403.
+// Referrer-Policy must stay strict-origin-when-cross-origin, not "no-referrer" (the request guard rejects
+// `Origin: null`; see the comment in next.config.ts for what was observed and what is only inferred).
 // No Content-Security-Policy and no Strict-Transport-Security here on purpose (see README).
 
 const EXPECTED = {
