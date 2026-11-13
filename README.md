@@ -59,7 +59,7 @@ Because retrieval is keyword-based, some off-topic questions that share a word w
 
 | Suite | Count | Command |
 | --- | --- | --- |
-| Unit and integration (Vitest) | 721 tests in 26 files | `npm test` |
+| Unit and integration (Vitest) | 752 tests in 28 files | `npm test` |
 | End to end (Playwright, Chromium) | 97 tests in 8 files | `npm run build` then `npm run test:e2e` |
 
 Both counts come from real runs of the commit that carries this README (the e2e count from `playwright test --list`). The GitHub Actions workflow `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, the unit tests, a production build and the e2e suite on every push to `main` and on pull requests. It uses no repository secrets and no real AI or database: AI runs in mock mode and the key-value store is disabled.
@@ -117,6 +117,7 @@ All variables are server-only. Never add a `NEXT_PUBLIC_` prefix. `.env.example`
 | `AI_MODE` | No | `mock`, `groq` or `off`. Unset or any other value behaves as `off`. See "AI modes". |
 | `GROQ_API_KEY` | Only for `AI_MODE=groq` | API key for Groq. |
 | `GROQ_MODEL` | No | Groq model name. Defaults to `openai/gpt-oss-20b`. |
+| `GROQ_DAILY_CAP` | No | Most Groq calls the whole site makes per 24 hours, chat answers and lead categorisation together. A positive whole number; unset or invalid means 300. Over the limit the site answers from the FAQ. Used only with `AI_MODE=groq`. |
 | `SESSION_SECRET` | Yes in production | Key for signing the session cookie, at least 16 characters. Outside production a fixed, insecure development value is used when it is missing. |
 | `UPSTASH_REDIS_REST_URL` | Recommended in production | Upstash Redis REST URL (must be `https://`). |
 | `UPSTASH_REDIS_REST_TOKEN` | Recommended in production | Upstash Redis REST token. |
@@ -137,7 +138,7 @@ Without the key-value variables, rate-limit counters and leads are kept in memor
 ## Deploying to Vercel
 
 1. Import the repository in Vercel (Node.js 26 is supported; `.nvmrc` and `engines` request it).
-2. Set these environment variables for Production: `SESSION_SECRET`, `AI_MODE`, and, when using Groq, `GROQ_API_KEY` (and optionally `GROQ_MODEL`).
+2. Set these environment variables for Production: `SESSION_SECRET`, `AI_MODE`, and, when using Groq, `GROQ_API_KEY` (and optionally `GROQ_MODEL` and `GROQ_DAILY_CAP`).
 3. Add an Upstash Redis database and set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (or let the Vercel Marketplace integration set `KV_REST_API_URL` and `KV_REST_API_TOKEN`). This is required, not optional: without it each serverless instance keeps its own memory and `/leads` is unreliable.
 4. Keep the project setting "Enable access to System Environment Variables" (Settings, Environment Variables) turned on so that Vercel provides `VERCEL_PROJECT_PRODUCTION_URL` ([Vercel docs](https://vercel.com/docs/environment-variables/system-environment-variables), checked 2026-11-13).
 
@@ -151,6 +152,7 @@ Do not set a `Referrer-Policy` of `no-referrer`: the request guard rejects `Orig
 - **The memory fallback is per instance.** Without the key-value store, leads and counters live in one server process. Serverless instances (for example on Vercel) do not share it, so a deployment must configure the store.
 - **`redactPII` reduces risk but is not complete.** It does not catch names or addresses typed in the chat, and it does not catch disguised emails such as "john at gmail dot com". It can also over-redact long digit runs such as dates, times and amounts (for example "2026-11-09 10:30" becomes "[phone]:30").
 - **Chat content is sent to Groq.** In `groq` mode, the redacted question, up to four redacted history items and the matching FAQ entries are sent to Groq. When a contact request is saved, the redacted chat history (up to six items) is also sent to Groq to pick a category and summary. Every request to Groq also carries a fixed system prompt. Form fields (name, email, note) are not sent. Because redaction is incomplete, do not type personal data into the chat.
+- **The Groq daily cap is best-effort.** `GROQ_DAILY_CAP` (default 300) limits real Groq calls per 24 hours for the whole site, chat answers and lead categorisation together. The 24 hours start at the first counted call, not at midnight. The cap uses the same counter store as the rate limiter, so without the key-value store, or while it is down, each server instance counts for itself and the real total can reach the cap times the number of instances. Over the cap the site answers from the FAQ, with no error and no AI label (the server writes one fixed log line per refused chat message), and a contact request is still saved, without a model summary. It does not apply to `mock` or `off` mode.
 - **FAQ retrieval is keyword-based.** Some off-topic questions that share a word with the FAQ (for example "what is the price of bitcoin") reach the model, which is why the system prompt must refuse off-topic questions. In fallback mode (no AI), long multi-topic questions can score below the confidence threshold and get the out-of-scope reply.
 - **The rate limiter is best-effort.** It counts per session cookie, so a client that drops cookies gets a fresh counter. The in-memory limiter is per instance and fails open when its key cap is reached. It is not abuse-proof.
 - **No Content-Security-Policy.** A policy that blocks inline scripts needs a fresh nonce on every request, and Next.js can apply a nonce only when pages are rendered dynamically on each request. That would give up the static pages that are served from the CDN, so this demo ships the four headers above but no CSP.
