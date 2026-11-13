@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleCreateLead, handleListLeads, type LeadResult } from "@/lib/leads/handleLead";
 import { createMemoryLeadStore, type LeadStore } from "@/lib/leads/store";
 import { createMockProvider } from "@/lib/ai/mockProvider";
-import { ProviderError, type ChatProvider, type CompleteInput } from "@/lib/ai/provider";
+import { buildMessages, ProviderError, type ChatProvider, type CompleteInput } from "@/lib/ai/provider";
 import { checkRateLimit, createMemoryCounterStore } from "@/lib/guard/rateLimit";
 import { KvError } from "@/lib/kv/upstash";
 import { POST, GET } from "@/app/api/leads/route";
@@ -109,6 +109,50 @@ describe("handleCreateLead: success", () => {
     }
     expect(sent).toContain("[email]");
     expect(sent).toContain("[phone]");
+  });
+
+  // Guards the README claim that form fields (email, name, note) are not sent to the AI provider.
+  // It checks everything the provider would put on the wire: the CompleteInput and the exact
+  // messages built from it (system prompt, history, question), including pieces of each value.
+  it("none of the form fields reaches the provider; an email typed in the chat is replaced by [email]", async () => {
+    const formOnly = {
+      email: "form.owner@mail-zq7.test",
+      name: "Quillon Vandermeer",
+      note: "Allergic to peppermint, bring forms Thursday",
+    };
+    const history = [
+      { role: "user", content: "I want to book a visit, write to chat.person@sample-host.org please" },
+      { role: "assistant", content: "Thanks, the team can help with booking." },
+    ];
+    const p = jsonProvider("booking", "Wants to book.");
+    await create({ ...formOnly, history }, deps({ provider: p }));
+
+    expect(p.calls).toHaveLength(1);
+    const sent = [
+      JSON.stringify(p.calls),
+      ...p.calls.map((c) => JSON.stringify(buildMessages(c))),
+    ]
+      .join("\n")
+      .toLowerCase();
+
+    for (const piece of [
+      formOnly.email,
+      "form.owner",
+      "mail-zq7",
+      formOnly.name,
+      "quillon",
+      "vandermeer",
+      formOnly.note,
+      "peppermint",
+      "thursday",
+    ]) {
+      expect(sent, `form value leaked: ${piece}`).not.toContain(piece.toLowerCase());
+    }
+    // The chat email is gone, and its replacement is in the history the model sees.
+    expect(sent).not.toContain("chat.person");
+    expect(sent).not.toContain("sample-host");
+    const messages = buildMessages(p.calls[0]);
+    expect(messages.some((m) => m.role === "user" && m.content.includes("write to [email] please"))).toBe(true);
   });
 
   it("the stored summary has no PII even if the model echoes it", async () => {
