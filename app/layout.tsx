@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import DemoBanner from "@/components/DemoBanner";
 import Header from "@/components/Header";
@@ -18,6 +18,13 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
 });
+
+// Raw hex is an accepted exception here (see CLAUDE.md): `themeColor` becomes a <meta> tag read by the
+// browser, outside the page CSS, so design tokens (CSS variables) are not available.
+// Token source: app/globals.css, @theme block. Keep this value in sync: #0369a1 = --color-brand
+export const viewport: Viewport = {
+  themeColor: "#0369a1",
+};
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
