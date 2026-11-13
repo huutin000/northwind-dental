@@ -11,7 +11,7 @@ Added after deploy.
 - **Pages:** Home, Services, FAQ (searchable), Contact and `/leads` (a visitor's own contact requests).
 - **Chat assistant:** a lazy-loaded chat widget. Answers come from 21 FAQ entries in five topic groups (opening hours and booking, services, costs and insurance, before your visit, aftercare). Each reply is labelled as an AI answer, a FAQ answer or "out of scope".
 - **Contact requests:** a form with client-side and server-side validation. A request is kept for 24 hours and is listed on `/leads` for the same browser session, with a category (booking, pricing or other) and a short summary of the chat that led to it.
-- **Responsive layout:** a viewport sweep in the e2e suite checks for horizontal overflow on five routes at ten sizes, from 320 px phones to 1920 px desktops. The menu and chat panel close with Escape and return focus to their button.
+- **Responsive layout:** the layout is checked at many screen sizes (see Testing). The menu and chat panel close with Escape and return focus to their button.
 - **Design:** a "Warm Arch" design (cream canvas, sky-blue brand, peach accent). Colours are declared once as tokens in the `@theme` block of `app/globals.css`.
 
 ## Architecture
@@ -63,7 +63,7 @@ Because retrieval is keyword-based, some off-topic questions that share a word w
 
 Both counts come from real runs of the commit that carries this README (the e2e count from `playwright test --list`). The GitHub Actions workflow `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, the unit tests, a production build and the e2e suite on every push to `main` and on pull requests. It uses no repository secrets and no real AI or database: AI runs in mock mode and the key-value store is disabled.
 
-The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the lead form and the `/leads` page (success, the 3-per-session limit, per-session isolation, plain-text rendering, client validation, chat history in the lead request), the request guard and lead API status codes, and a viewport sweep (no horizontal overflow on five routes at ten sizes). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
+The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the lead form and the `/leads` page (success, the 3-per-session limit, per-session isolation, plain-text rendering, client validation, chat history in the lead request), the request guard and lead API status codes, and a viewport sweep (no horizontal overflow on five routes at ten sizes, from 320 px to 1920 px wide). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
 
 ```bash
 npx playwright install chromium   # once
@@ -72,7 +72,7 @@ npm run test:e2e
 npx playwright show-report        # HTML report in playwright-report/
 ```
 
-The suite starts `next start` on port 3400 (it fails if the port is taken or if `npm run build` was not run). The server always runs with mock AI, a fake session secret and no key-value store (the four KV variables are forced to a blank value), whatever your shell or local env file contains, so it never reaches Groq or Upstash. Leads and counters live in server memory, and each test uses its own browser context, so tests do not share a session.
+The suite starts `next start` on port 3400 (it fails if the port is taken or if `npm run build` was not run). The server always runs with mock AI, a fake session secret and no key-value store (the four KV variables are forced to a blank value), so by design it does not use Groq or Upstash even if your shell or local env file contains keys. Leads and counters live in server memory, and each test uses its own browser context, so tests do not share a session.
 
 ### Live tests (`@live`, manual only)
 
@@ -135,17 +135,11 @@ Do not set a `Referrer-Policy` of `no-referrer`: the request guard rejects `Orig
 
 - **Images are AI-generated.** The clinic photos are rendered images made for this fictional clinic. They show no real people, doctors or logos. Service icons are hand-written SVG.
 - **Lead data is short-lived and stored at a third party.** A contact request (email, optional name and note, a category and a short summary derived from the redacted chat) is stored for 24 hours and then deleted. When the key-value store is configured, it is stored at Upstash.
-- **Upstash Free is not encrypted at rest.** Encryption at rest is an add-on that the Free plan does not include. The connection itself uses TLS. Use only fake contact details in this demo.
+- **Upstash Free is not encrypted at rest.** According to the Upstash pricing page, encryption at rest is part of the paid "Prod Pack" add-on, which "can be purchased for any plan except the Free tier" ([Upstash pricing](https://upstash.com/pricing/redis), checked 2026-11-13). The connection itself uses TLS. Use only fake contact details in this demo.
 - **The memory fallback is per instance.** Without the key-value store, leads and counters live in one server process. Serverless instances (for example on Vercel) do not share it, so a deployment must configure the store.
-- **`redactPII` reduces risk but is not complete.** It does not catch names or addresses typed in the chat, or disguised forms such as "john at gmail dot com". Dates, times and amounts with 9 or more digits are over-redacted (for example "2026-11-09 10:30" becomes "[phone]:30"), and 9+ digit runs inside longer IDs are redacted. An email local part longer than 64 characters keeps its first characters. Digits from other scripts and an ideographic full stop in an email are not caught. In scripts written without spaces (for example Chinese) an email can swallow up to 64 letters before the "@". Unicode normalisation and invisible-character stripping change the text (for example "1½" becomes "11⁄2").
+- **`redactPII` reduces risk but is not complete.** It does not catch names or addresses typed in the chat, and it does not catch disguised emails such as "john at gmail dot com". It can also over-redact long digit runs such as dates, times and amounts (for example "2026-11-09 10:30" becomes "[phone]:30").
 - **Chat content is sent to Groq.** In `groq` mode, the redacted question, up to four redacted history items and the matching FAQ entries are sent to Groq. When a contact request is saved, the redacted chat history (up to six items) is also sent to Groq to pick a category and summary. Every request to Groq also carries a fixed system prompt. Form fields (name, email, note) are not sent. Because redaction is incomplete, do not type personal data into the chat.
 - **FAQ retrieval is keyword-based.** Some off-topic questions that share a word with the FAQ (for example "what is the price of bitcoin") reach the model, which is why the system prompt must refuse off-topic questions. In fallback mode (no AI), long multi-topic questions can score below the confidence threshold and get the out-of-scope reply.
 - **The rate limiter is best-effort.** It counts per session cookie, so a client that drops cookies gets a fresh counter. The in-memory limiter is per instance and fails open when its key cap is reached. It is not abuse-proof.
 - **`/leads` is tied to the browser session, not to a person.** There is no login. A visitor sees only the requests saved under their own session cookie, and clearing cookies hides them.
 - **Not a real clinic.** The text on the site is demo copy. It makes no medical claims and no real appointment is booked.
-
-## Images and design assets
-
-- Clinic visuals are AI-generated rendered images, optimised to WebP with size budgets (Hero up to 110 KB, content images up to about 60 to 95 KB). Hand-written SVG icons follow the design tokens.
-- Five of the seven images in `public/images/` appear on the Home page (`hero-clinic.webp`, `reception.webp`, `treatment-room.webp`, `equipment-bay.webp`, `welcome.webp`). `waiting-lounge.webp` (an imaging room) is used on the Contact page. `cleaning.webp` is currently unused (spare).
-- Raw image generation sources are kept in `assets-src/` (git-ignored).
