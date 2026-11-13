@@ -58,7 +58,7 @@ Because retrieval is keyword-based, some off-topic questions that share a word w
 
 | Suite | Count | Command |
 | --- | --- | --- |
-| Unit and integration (Vitest) | 720 tests in 26 files | `npm test` |
+| Unit and integration (Vitest) | 721 tests in 26 files | `npm test` |
 | End to end (Playwright, Chromium) | 93 tests in 6 files | `npm run build` then `npm run test:e2e` |
 
 Both counts come from real runs of the commit that carries this README (the e2e count from `playwright test --list`). The GitHub Actions workflow `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, the unit tests, a production build and the e2e suite on every push to `main` and on pull requests. It uses no repository secrets and no real AI or database: AI runs in mock mode and the key-value store is disabled.
