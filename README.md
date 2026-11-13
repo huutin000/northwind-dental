@@ -1,6 +1,10 @@
 # Northwind Dental
 
+[![CI](https://github.com/huutin000/northwind-dental/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/huutin000/northwind-dental/actions/workflows/ci.yml)
+
 A demo project (not a real clinic): a five-page website for a fictional boutique dental clinic, with an AI chat assistant that answers only from the clinic's FAQ and a small contact-request flow. Built with Next.js, React, TypeScript and Tailwind CSS.
+
+Built with AI coding assistance (Claude Code). I defined the design and scope, reviewed each milestone, and verified the result with the test suite and CI.
 
 ## Live demo
 
@@ -158,3 +162,7 @@ Do not set a `Referrer-Policy` of `no-referrer`: the request guard rejects `Orig
 - **No Content-Security-Policy.** A policy that blocks inline scripts needs a fresh nonce on every request, and Next.js can apply a nonce only when pages are rendered dynamically on each request. That would give up the static pages that are served from the CDN, so this demo ships the four headers above but no CSP.
 - **`/leads` is tied to the browser session, not to a person.** There is no login. A visitor sees only the requests saved under their own session cookie, and clearing cookies hides them.
 - **Not a real clinic.** The text on the site is demo copy. It makes no medical claims and no real appointment is booked.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The license applies to the source code.
