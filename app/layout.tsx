@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
 import MobileCtaBar from "@/components/MobileCtaBar";
+import { getSiteUrl } from "@/lib/siteUrl";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -19,6 +20,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
   title: {
     default: "Northwind Dental (demo)",
     template: "%s | Northwind Dental (demo)",
