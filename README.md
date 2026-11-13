@@ -12,7 +12,7 @@ A demo project (not a real clinic): a five-page website for a fictional boutique
 - **Chat assistant:** a lazy-loaded chat widget. Answers come from 21 FAQ entries in five topic groups (opening hours and booking, services, costs and insurance, before your visit, aftercare). Each reply is labelled as an AI answer, a FAQ answer or "out of scope".
 - **Contact requests:** a form with client-side and server-side validation. A request is kept for 24 hours and is listed on `/leads` for the same browser session, with a category (booking, pricing or other) and a short summary of the chat that led to it.
 - **Responsive layout:** the layout is checked at many screen sizes (see Testing). The menu and chat panel close with Escape and return focus to their button.
-- **Design:** a "Warm Arch" design (cream canvas, sky-blue brand, peach accent). Colours are declared once as tokens in the `@theme` block of `app/globals.css`.
+- **Design:** a "Warm Arch" design (cream canvas, sky-blue brand, peach accent). Colours are declared once as tokens in the `@theme` block of `app/globals.css`. The tab icon (SVG), a 512 px PNG icon and a 180 px Apple touch icon are drawn from one tooth shape, and the browser theme color is the brand blue.
 
 ## Architecture
 
@@ -60,11 +60,11 @@ Because retrieval is keyword-based, some off-topic questions that share a word w
 | Suite | Count | Command |
 | --- | --- | --- |
 | Unit and integration (Vitest) | 721 tests in 26 files | `npm test` |
-| End to end (Playwright, Chromium) | 96 tests in 7 files | `npm run build` then `npm run test:e2e` |
+| End to end (Playwright, Chromium) | 97 tests in 8 files | `npm run build` then `npm run test:e2e` |
 
 Both counts come from real runs of the commit that carries this README (the e2e count from `playwright test --list`). The GitHub Actions workflow `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, the unit tests, a production build and the e2e suite on every push to `main` and on pull requests. It uses no repository secrets and no real AI or database: AI runs in mock mode and the key-value store is disabled.
 
-The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the lead form and the `/leads` page (success, the 3-per-session limit, per-session isolation, plain-text rendering, client validation, chat history in the lead request), the request guard and lead API status codes, the security headers on a page, an API response and the 404 page, and a viewport sweep (no horizontal overflow on five routes at ten sizes, from 320 px to 1920 px wide). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
+The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the lead form and the `/leads` page (success, the 3-per-session limit, per-session isolation, plain-text rendering, client validation, chat history in the lead request), the request guard and lead API status codes, the security headers on a page, an API response and the 404 page, the icon links and theme color, and a viewport sweep (no horizontal overflow on five routes at ten sizes, from 320 px to 1920 px wide). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
 
 ```bash
 npx playwright install chromium   # once
