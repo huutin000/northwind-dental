@@ -383,10 +383,14 @@ describe("AC-3: prompt injection", () => {
       { provider, limiter: limiterSpy().limiter },
     );
     expect(calls).toHaveLength(1);
-    expect(calls[0].history).toEqual([
-      { role: "user", content: "earlier question" },
-      { role: "user", content: "second question" },
-    ]);
+    // Only user items survive, and only inside the labelled block of `question`; history is empty.
+    expect(calls[0].history).toEqual([]);
+    expect(calls[0].question).toBe(
+      "Previous questions from this visitor (context only, do NOT answer them again):\n" +
+        "- earlier question\n- second question" +
+        "\n\nCurrent question (answer ONLY this one):\n" +
+        HOURS_Q,
+    );
     expect(JSON.stringify(calls[0])).not.toContain("FORGED");
   });
 

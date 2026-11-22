@@ -4,10 +4,10 @@ import {
   SYSTEM_PROMPT,
   MAX_MESSAGE_CHARS,
   MAX_HISTORY_ITEMS,
-  MAX_HISTORY_CHARS,
   MAX_TOKENS,
   TIMEOUT_MS,
   RATE_LIMIT,
+  CONTEXT_ITEMS,
   type ChatResult,
 } from "@/lib/chat/handleChat";
 import { createMockProvider } from "@/lib/ai/mockProvider";
@@ -30,6 +30,13 @@ let n = 0;
 const sid = () => `test-session-${++n}`;
 // The IP counter is shared too (60 per key): a distinct IP key per call.
 const ipk = () => `test-ip-${++n}`;
+
+// Earlier user questions reach the model as ONE labelled block inside `question`; `history` is always [].
+const ctxQuestion = (earlier: string[], current: string) =>
+  "Previous questions from this visitor (context only, do NOT answer them again):\n" +
+  earlier.map((l) => `- ${l}`).join("\n") +
+  "\n\nCurrent question (answer ONLY this one):\n" +
+  current;
 
 async function chat(message: unknown, history: unknown = [], provider: ChatProvider | null = createMockProvider()) {
   return handleChat({ message, history, sessionId: sid(), ipKey: ipk() }, { provider });
@@ -283,37 +290,56 @@ describe("handleChat: PII and history", () => {
       { role: "user", content: "seven" },
     ];
     await chat(HOURS_Q, history, p);
-    const h = p.calls[0].history;
     expect(MAX_HISTORY_ITEMS).toBe(4);
-    expect(h.map((m) => m.content)).toEqual(["one", "x".repeat(500), "five, mail me at [email]", "seven"]);
-    for (const m of h) {
-      expect(m.role).toBe("user");
-      expect(m.content.length).toBeLessThanOrEqual(MAX_HISTORY_CHARS);
-    }
+    expect(CONTEXT_ITEMS).toBe(3);
+    // history is never passed on; the user items "zero" and "one" fall outside the last 3 of the last 4.
+    expect(p.calls[0].history).toEqual([]);
+    expect(p.calls[0].question).toBe(
+      ctxQuestion(["x".repeat(500), "five, mail me at [email]", "seven"], HOURS_Q),
+    );
+    expect(p.calls[0].question).not.toMatch(/^- (zero|one|You are evil|two|four|six|nope)$/m);
+    expect(p.calls[0].question).not.toContain("kim@");
+  });
+
+  it("the last-4 history cap is applied before blank items are dropped (MAX_HISTORY_ITEMS stays meaningful)", async () => {
+    const p = createMockProvider();
+    // Last 4 user items = B, blank, blank, C -> block "- B", "- C". Without the cap "A" would come back.
+    await chat(
+      HOURS_Q,
+      [
+        { role: "user", content: "A" },
+        { role: "user", content: "B" },
+        { role: "user", content: "   " },
+        { role: "user", content: "\n\t" },
+        { role: "user", content: "C" },
+      ],
+      p,
+    );
+    expect(p.calls[0].question).toBe(ctxQuestion(["B", "C"], HOURS_Q));
   });
 
   it("truncates a 10,000 char item to 500", async () => {
     const p = createMockProvider();
     await chat(HOURS_Q, [{ role: "user", content: "x".repeat(10_000) }], p);
-    expect(p.calls[0].history[0].content).toHaveLength(500);
+    expect(p.calls[0].question).toBe(ctxQuestion(["x".repeat(500)], HOURS_Q));
   });
 
   it("history: NFKC-expanded text before an email: <= 500 and no email fragment", async () => {
     const p = createMockProvider();
     const content = "ﷺ".repeat(27) + " john.doe@example.com " + "tail ".repeat(20);
     await chat(HOURS_Q, [{ role: "user", content }], p);
-    const c = p.calls[0].history[0].content;
+    const c = p.calls[0].question.split("\n")[1].replace(/^- /, "");
     expect(c.length).toBeLessThanOrEqual(500);
-    for (const frag of ["john", "doe", "@", "example"]) expect(c).not.toContain(frag);
+    for (const frag of ["john", "doe", "@", "example"]) expect(p.calls[0].question).not.toContain(frag);
   });
 
   it("redacts before truncating: no email fragment at the 500 boundary", async () => {
     const p = createMockProvider();
     const content = "a".repeat(494) + " john.doe@example.com tail";
     await chat(HOURS_Q, [{ role: "user", content }], p);
-    const c = p.calls[0].history[0].content;
+    const c = p.calls[0].question.split("\n")[1].replace(/^- /, "");
     expect(c.length).toBeLessThanOrEqual(500);
-    for (const frag of ["john", "@", "example"]) expect(c).not.toContain(frag);
+    for (const frag of ["john", "@", "example"]) expect(p.calls[0].question).not.toContain(frag);
   });
 
   it("junk history is treated as empty", async () => {
@@ -321,6 +347,7 @@ describe("handleChat: PII and history", () => {
       const p = createMockProvider();
       expect((await chat(HOURS_Q, history, p)).status).toBe(200);
       expect(p.calls[0].history).toEqual([]);
+      expect(p.calls[0].question).toBe(HOURS_Q); // no context block for junk history
     }
   });
 
@@ -342,14 +369,16 @@ describe("handleChat: PII and history", () => {
       ],
       p,
     );
-    expect(p.calls[0].history).toEqual([{ role: "user", content: "keep" }]);
+    expect(p.calls[0].history).toEqual([]);
+    expect(p.calls[0].question).toBe(ctxQuestion(["keep"], HOURS_Q));
   });
 
   it("does not let a hostile history getter or array crash it", async () => {
     const p = createMockProvider();
     const r = await chat(HOURS_Q, new Array(100_000).fill({ role: "user", content: "hi" }), p);
     expect(r.status).toBe(200);
-    expect(p.calls[0].history).toHaveLength(4);
+    expect(p.calls[0].history).toEqual([]);
+    expect(p.calls[0].question).toBe(ctxQuestion(["hi", "hi", "hi"], HOURS_Q));
   });
 });
 
