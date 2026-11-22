@@ -108,7 +108,7 @@ Spec and plan: `doc/northwind-dental-HANDOFF.md` (Vietnamese; local only, gitign
 
 ## Notes for Task 6 and Task 9 (from the M2 review)
 - HARD REQUIREMENT for Task 6: the chat system prompt must itself instruct the model to refuse off-topic (non-clinic) questions. Since `handleChat` now calls the model whenever any FAQ entry matches, the system prompt is the main off-topic defence (see "Chat routing" under Decisions).
-- Rate-limit keys are prefixed by purpose (`chat:<sessionId>` and `chatip:<hash>`, the latter a per-client counter of 60 per 10 minutes); the Groq daily cap uses its own constant key (`groq-daily`), so the counters never share a key.
+- Rate-limit keys are prefixed by purpose (`chat:<sessionId>` and `chatip:<hash>`, the latter a per-client counter of 60 per 10 minutes; IPv6 clients are grouped by /64); the Groq daily cap uses its own constant key (`groq-daily`), so the counters never share a key.
 - The limit is per session cookie and the server issues a new cookie when one is missing, so a client that drops cookies always gets a fresh counter. This is a known limit of the design; do not describe the rate limiter as abuse-proof.
 - `retrieve` is keyword-based: an off-topic question that shares a word with the FAQ gets a match. `handleChat` now calls the model for any match, so the system prompt is the off-topic defence (see "Chat routing" under Decisions).
 - Task 6 runs `redactPII` on the message and on every client-sent history item, then `retrieve` on the redacted message. `retrieve` already ignores the `[phone]` / `[email]` markers.

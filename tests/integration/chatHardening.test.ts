@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleChat, SYSTEM_PROMPT, IP_RATE_LIMIT, RATE_LIMIT } from "@/lib/chat/handleChat";
 import { ProviderError, type ChatProvider, type CompleteInput } from "@/lib/ai/provider";
 import { FAQ } from "@/lib/faq/data";
+import { getClientKey } from "@/lib/guard/clientIp";
 import { POST } from "@/app/api/chat/route";
 import { createFakeUpstash } from "../helpers/fakeUpstash";
 
@@ -25,8 +26,8 @@ afterEach(() => {
 
 // Every test uses its own IP and its own sessions: the default counter store is shared in this file.
 let ipN = 0;
-// Unique per call (IPv6 so there is room for the counter).
-const uniqueIp = () => `2001:db8::${(++ipN).toString(16)}`;
+// Unique per call: every call yields a DIFFERENT /64 (the IP limit keys on the /64 of an IPv6 address).
+const uniqueIp = () => `2001:db8:${(++ipN).toString(16)}::1`;
 
 let sidN = 0;
 const sid = () => `hard-session-${++sidN}`;
@@ -292,6 +293,47 @@ describe("AC-2: rate limits", () => {
     for (let i = 0; i < 60; i++) await POST(post({ message: HOURS_Q }, { "x-real-ip": a }));
     expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": a }))).status).toBe(429);
     expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": b }))).status).toBe(200);
+  });
+
+  const keyOf = (ip: string) => getClientKey(new Request("http://localhost/", { headers: { "x-real-ip": ip } }));
+
+  it("AC-c/g: 61 requests from different addresses in ONE /64 -> the 60th is 200, the 61st is 429; another /64 still answered", async () => {
+    // Valid /64s: third group 0xffff never collides with uniqueIp() (2001:db8:<small n>::1).
+    const prefix = `2001:db8:ffff:${(++ipN).toString(16)}`;
+    const other = `2001:db8:ffff:${(++ipN).toString(16)}::1`;
+    const addr = (i: number) => `${prefix}::${i.toString(16)}`;
+    // Guard against passing for the wrong reason: every address must be a valid IP (key is not "unknown"),
+    // the same-/64 addresses must share one key and the other /64 must have a different one.
+    const sameKey = keyOf(addr(1));
+    expect(sameKey).not.toBe("unknown");
+    expect(keyOf(addr(60))).toBe(sameKey);
+    expect(keyOf(`${prefix}:ffff:ffff:ffff:1`)).toBe(sameKey);
+    expect(keyOf(other)).not.toBe("unknown");
+    expect(keyOf(other)).not.toBe(sameKey);
+    for (let i = 1; i <= 60; i++) {
+      const r = await POST(post({ message: HOURS_Q }, { "x-real-ip": addr(i) }));
+      expect(r.status, `request ${i}`).toBe(200);
+    }
+    const denied = await POST(post({ message: HOURS_Q }, { "x-real-ip": addr(61) }));
+    expect(denied.status).toBe(429);
+    expect(denied.headers.get("retry-after")).toBe("600");
+    // A brand-new address in the same /64 is denied too; a different /64 is not.
+    expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": `${prefix}:ffff:ffff:ffff:1` }))).status).toBe(429);
+    expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": other }))).status).toBe(200);
+  });
+
+  it("AC-d/g: an IPv4-mapped IPv6 address and the plain IPv4 of the same host share one limit", async () => {
+    const v4 = `192.0.2.${100 + (++ipN % 100)}`;
+    const [a, b, c, d] = v4.split(".").map(Number);
+    const mapped = `::ffff:${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+    expect(keyOf(v4)).not.toBe("unknown");
+    expect(keyOf(mapped)).toBe(keyOf(v4));
+    for (let i = 0; i < 30; i++) {
+      expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": v4 }))).status).toBe(200);
+      expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": mapped }))).status).toBe(200);
+    }
+    expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": v4 }))).status).toBe(429);
+    expect((await POST(post({ message: HOURS_Q }, { "x-real-ip": mapped }))).status).toBe(429);
   });
 
   it("AC-2: changing x-forwarded-for does not escape the IP limit (it is ignored)", async () => {
