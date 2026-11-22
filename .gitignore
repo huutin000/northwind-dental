@@ -58,3 +58,6 @@ blob-report/
 # local planning docs and agent settings (not part of the repository)
 /doc/
 .claude/
+
+# Local design exports (claude.ai/design), kept outside git
+/design/
