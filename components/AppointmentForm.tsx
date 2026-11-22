@@ -390,7 +390,7 @@ export default function AppointmentForm() {
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex min-h-12 sm:min-w-[14rem] items-center justify-center gap-2.5 rounded-button bg-brand px-8 py-3 text-base font-semibold text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-disabled disabled:text-canvas"
+          className="inline-flex min-h-12 sm:min-w-[15rem] items-center justify-center gap-2.5 rounded-button bg-brand px-8 py-3 text-base font-semibold text-canvas hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-disabled disabled:text-canvas"
         >
           {busy ? (
             <>
