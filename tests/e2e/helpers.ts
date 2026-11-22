@@ -1,15 +1,5 @@
 // Shared helpers for the e2e specs. Selectors come only from UI-CONTRACT.md.
-import { expect, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
-
-export const LEAD_NOTICE = "This is a demo. Please use a fake email. Data is deleted after 24 hours.";
-
-let counter = 0;
-
-/** A fake, unique address (test data is dummy: example.com never delivers). */
-export function fakeEmail(): string {
-  counter += 1;
-  return `qa-auto-${Date.now().toString(36)}-${counter}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-}
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Waits until React has hydrated the element behind a test id, without any fixed sleep. A click or a native
@@ -57,29 +47,6 @@ export async function ask(page: Page, text: string, turn: number) {
   await expect(bubble).toBeVisible();
   await expect(page.getByTestId("chat-message-assistant")).toHaveCount(turn);
   return bubble;
-}
-
-/**
- * Creates a lead through the REAL API (the old lead form is no longer on /contact). `request` should be
- * `page.request` so the session cookie is shared with the page and the lead shows up on /leads.
- * Sends what the request guard requires: Content-Type application/json and a same-origin Origin header.
- */
-export async function createLeadViaApi(
-  request: APIRequestContext,
-  baseURL: string | undefined,
-  values: { email?: string; name?: string; note?: string; history?: { role: string; content: string }[] } = {},
-): Promise<{ email: string; status: number }> {
-  const email = values.email ?? fakeEmail();
-  const res = await request.post("/api/leads", {
-    headers: { "Content-Type": "application/json", Origin: new URL(baseURL!).origin },
-    data: { email, name: values.name, note: values.note, history: values.history ?? [], website: "" },
-  });
-  return { email, status: res.status() };
-}
-
-/** A second, fully isolated browser context (own cookies, so own server session). */
-export async function isolatedContext(browser: Browser, baseURL: string | undefined): Promise<BrowserContext> {
-  return browser.newContext({ baseURL });
 }
 
 /** Same idea as waitForHydration, for a locator without a test id (the appointment form has none). */

@@ -375,7 +375,7 @@ test.describe("AC-4 valid submit, sending, success, reset", () => {
     await expect(serviceField(page)).toHaveValue("");
     await expect(banner(page)).toHaveCount(0);
 
-    expect(w.api, "the simulated form must not call /api/leads or /api/chat").toEqual([]);
+    expect(w.api, "the simulated form must not call any /api/ route").toEqual([]);
     expect(w.out).toEqual([]);
   });
 

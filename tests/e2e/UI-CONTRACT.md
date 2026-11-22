@@ -15,8 +15,7 @@ comparison. No fixed sleeps (use `expect` auto-wait).
 | `/services` | static | `h1`, `navigation` named "Main", `main` |
 | `/faq` | static | `h1`, `navigation` named "Main", `main` |
 | `/contact` | static | `h1` "Request an appointment", the simulated appointment form (see below) |
-| `/leads` | dynamic, per session | `h1` "Your requests", `lead-notice`, `lead-empty` or `lead-list-item` |
-| `POST /api/chat`, `POST /api/leads`, `GET /api/leads` | route handlers | status codes in "API contract" |
+| `POST /api/chat` | route handlers | status codes in "API contract" |
 
 ## Test ids
 
@@ -49,15 +48,8 @@ Appointment form (`components/AppointmentForm.tsx`) on `/contact` (SIMULATION: s
 - Success: `role="status"` panel with focus, heading "Request received (demo)", `dl` recap (Name, Service, Preferred, Contact) as plain text. "Make another request" resets and focuses "Full name".
 - "Demo only. This form does not send anything." is visible in the form state. The form makes NO request to `/api/*` and uses no storage.
 
-The old lead form (`components/LeadForm.tsx`) is no longer rendered anywhere; its test ids (`lead-email`, `lead-name`, `lead-note`, `lead-submit`, `lead-error`, `lead-success`, `lead-view-link`) no longer exist in the UI. `lead-notice` (`components/LeadNotice.tsx`) is still shown at the top of `/leads`.
-
-Leads page (`app/leads/page.tsx`)
-- `lead-empty` : empty state (no cookie, invalid cookie, no leads, or a store error).
-- `lead-list-item` : one per stored lead, newest first. Contains the lead fields as plain text.
-
 ## Required copy (the only exact strings the tests may assert)
 
-- Lead banner on `/leads` (`lead-notice`): "This is a demo. Please use a fake email. Data is deleted after 24 hours."
 - Appointment form messages and headings (listed above).
 - Chat source labels: "AI answer", "From our FAQ", "Outside my scope".
 - The `hours` FAQ answer (scenario 3) is read from `lib/faq/data.ts` (entry id `hours`), never copied into the test.
@@ -75,14 +67,8 @@ Chat
    with `chat-retry` appears; after the chunk is reachable again, `chat-retry` opens the panel and focuses `chat-input`.
    Closing and reopening a failed panel shows the same failure box until `chat-retry` is pressed.
 6. Out-of-scope answers show `chat-contact-hint`; following `chat-contact-link` closes the panel and navigates to `/contact#form-heading`.
-7. (Retired as an e2e test: the form that sent the chat history is gone from /contact. The API-level history handling stays covered by `tests/integration/leads.test.ts`.)
 8. The mock provider answers "AI answer"; a question containing `__mock_429__` makes it fail, which must produce "From our FAQ" with
    the verbatim FAQ answer.
-
-Lead (API and /leads only; leads are created through the real API in the tests, not through a form)
-9. Requests are same-origin `POST` with `Content-Type: application/json` and a same-origin `Origin` header.
-12. The 4th lead of a session is answered with 429. A lead is visible on `/leads` for the session that created it only.
-13. Stored text is rendered as plain text (no HTML injection) on `/leads`.
 
 Appointment form
 9a. Client validation only; a valid submit shows "Sending request" for exactly 1200 ms (tests drive it with `page.clock`, no fixed sleeps), then the success panel (focus on it). The timer is cleared when the form unmounts. No network call.
@@ -99,10 +85,7 @@ Layout
 
 | Request | Expected |
 |---|---|
-| `POST /api/leads` without `Content-Type: application/json` | 415, no `Set-Cookie` |
-| `POST /api/leads` with a foreign `Origin` | 403, no `Set-Cookie` |
-| `POST /api/leads` with an invalid email | 400 |
-| `POST /api/leads` with a non-empty `website` | 400, nothing stored |
-| `POST /api/leads` valid | 201 `{ lead }` and a session cookie |
-| 4th valid lead of a session | 429 |
-| `GET /api/leads` without cookie | 200 `{ leads: [] }` |
+| `POST /api/chat` with `Content-Type` `text/plain`, `application/x-www-form-urlencoded` or `application/jsonx` | 415, no `Set-Cookie` (`tests/e2e/chatGuard.spec.ts`) |
+| `POST /api/chat` with `Content-Type: application/json` and a foreign `Origin` | 403, no `Set-Cookie` (`tests/e2e/chatGuard.spec.ts`) |
+| `POST /api/chat` with `Sec-Fetch-Site: cross-site` | 403, no `Set-Cookie` (`tests/e2e/chatGuard.spec.ts`) |
+| `POST /api/chat` same-origin (`application/json`, same `Origin`, `Sec-Fetch-Site: same-origin`), in-scope question | 200 with `source: "ai"` in mock mode (`tests/e2e/chatGuard.spec.ts`) |

@@ -136,3 +136,23 @@ test.describe("chat panel chunk failure", () => {
     await expect(page.getByTestId("chat-panel-error")).toHaveCount(0);
   });
 });
+
+test.describe("chat contact hint link", () => {
+  test("8. after an out-of-scope chat the contact link opens /contact#form-heading and the page has that target", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await openChat(page);
+    const bubble = await ask(page, "What is the capital of France?", 1);
+    await expect(bubble.getByTestId("chat-source")).toHaveText("Outside my scope");
+
+    await expect(page.getByTestId("chat-contact-hint")).toBeVisible();
+    await page.getByTestId("chat-contact-link").click();
+    await expect(page).toHaveURL(/\/contact#form-heading$/);
+    await expect(page.getByTestId("chat-panel")).toBeHidden();
+    await expect(page.getByTestId("chat-toggle")).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#form-heading")).toHaveCount(1);
+    await expect(page.getByRole("region", { name: "Appointment request form" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Full name" })).toBeVisible();
+  });
+});

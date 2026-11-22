@@ -42,7 +42,7 @@ export default function FaqPage() {
               Not answered here?
             </h2>
             <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
-              Send a request through the contact page, or look at what each service involves. The demo chat assistant
+              Try the demo request form on the contact page, or look at what each service involves. The demo chat assistant
               in the corner can also answer from this list.
             </p>
             <div className="mt-1.5 flex w-full flex-wrap gap-3">

@@ -1,14 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Wrap the three factories the routes call AFTER the guard. If a rejected request
-// reaches the provider, the store or the limiter, one of these spies is called.
+// Wrap the two factories the route calls AFTER the guard. If a rejected request
+// reaches the provider or the limiter, one of these spies is called.
 vi.mock("@/lib/ai", async (orig) => {
   const m = await orig<typeof import("@/lib/ai")>();
   return { ...m, getProvider: vi.fn(m.getProvider) };
-});
-vi.mock("@/lib/leads/store", async (orig) => {
-  const m = await orig<typeof import("@/lib/leads/store")>();
-  return { ...m, getLeadStore: vi.fn(m.getLeadStore) };
 });
 vi.mock("@/lib/kv/counterStore", async (orig) => {
   const m = await orig<typeof import("@/lib/kv/counterStore")>();
@@ -16,10 +12,8 @@ vi.mock("@/lib/kv/counterStore", async (orig) => {
 });
 
 import { getProvider } from "@/lib/ai";
-import { getLeadStore } from "@/lib/leads/store";
 import { getCounterStore } from "@/lib/kv/counterStore";
 import { POST as chatPost } from "@/app/api/chat/route";
-import { POST as leadPost } from "@/app/api/leads/route";
 
 beforeEach(() => {
   vi.stubEnv("AI_MODE", "off");
@@ -28,13 +22,11 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.mocked(getProvider).mockClear();
-  vi.mocked(getLeadStore).mockClear();
   vi.mocked(getCounterStore).mockClear();
 });
 
 const routes = [
   ["/api/chat", chatPost, { message: "What time do you open?", history: [] }],
-  ["/api/leads", leadPost, { email: "visitor@clinic-mail.org" }],
 ] as const;
 
 function request(path: string, body: unknown, headers: Record<string, string>) {
@@ -65,7 +57,6 @@ describe.each(routes)("CSRF guard on POST %s", (path, handler, body) => {
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("set-cookie")).toBeNull();
     expect(getProvider).not.toHaveBeenCalled();
-    expect(getLeadStore).not.toHaveBeenCalled();
     expect(getCounterStore).not.toHaveBeenCalled();
   });
 
@@ -78,7 +69,7 @@ describe.each(routes)("CSRF guard on POST %s", (path, handler, body) => {
         "sec-fetch-site": "same-origin",
       }),
     );
-    expect(res.status).toBe(path === "/api/leads" ? 201 : 200);
+    expect(res.status).toBe(200);
     expect(res.headers.get("set-cookie")).toContain("nd_session=");
     expect(getCounterStore).toHaveBeenCalled();
   });

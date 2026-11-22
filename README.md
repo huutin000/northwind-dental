@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/huutin000/northwind-dental/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/huutin000/northwind-dental/actions/workflows/ci.yml)
 
-A demo project (not a real clinic): a five-page website for a fictional boutique dental clinic, with an AI chat assistant that answers only from the clinic's FAQ and a small contact-request flow. Built with Next.js, React, TypeScript and Tailwind CSS.
+A demo project (not a real clinic): a four-page website for a fictional boutique dental clinic, with an AI chat assistant that answers only from the clinic's FAQ and a demo appointment request form that sends nothing. Built with Next.js, React, TypeScript and Tailwind CSS.
 
 Built with AI coding assistance (Claude Code). I defined the design and scope, reviewed each milestone, and verified the result with the test suite and CI.
 
@@ -12,9 +12,9 @@ Built with AI coding assistance (Claude Code). I defined the design and scope, r
 
 ## Features
 
-- **Pages:** Home, Services, FAQ (searchable), Contact and `/leads` (a visitor's own contact requests).
+- **Pages:** Home, Services, FAQ (searchable), and Contact.
 - **Chat assistant:** a lazy-loaded chat widget. Answers come from 21 FAQ entries in five topic groups (opening hours and booking, services, costs and insurance, before your visit, aftercare). Each reply is labelled as an AI answer, a FAQ answer or "out of scope".
-- **Contact requests:** a form with client-side and server-side validation. A request is kept for 24 hours and is listed on `/leads` for the same browser session, with a category (booking, pricing or other) and a short summary of the chat that led to it.
+- **Contact page:** a demo "Request an appointment" form. It sends nothing and stores nothing; the chat is the only server feature.
 - **Responsive layout:** the layout is checked at many screen sizes (see Testing). The menu and chat panel close with Escape and return focus to their button.
 - **Design:** a "Warm Arch" design (cream canvas, sky-blue brand, peach accent). Colours are declared once as tokens in the `@theme` block of `app/globals.css`. The tab icon (SVG), a 512 px PNG icon and a 180 px Apple touch icon are drawn from one tooth shape, and the browser theme color is the brand blue.
 
@@ -24,19 +24,16 @@ Built with AI coding assistance (Claude Code). I defined the design and scope, r
 flowchart LR
   V[Visitor browser] -->|JSON POST| G{Request guard}
   G -->|/api/chat| C[handleChat]
-  G -->|/api/leads| L[handleLead]
   C --> P[redactPII]
   P --> R[FAQ retrieve]
   R -->|any match| A[AI provider: mock / groq / off]
   R -->|no match| O[Out-of-scope reply]
   A -->|fails or no provider| F[Best FAQ answer or out-of-scope]
-  C & L --> RL[Rate limiter]
-  L --> S[(Lead store)]
+  C --> RL[Rate limiter]
   RL --> K[(Upstash Redis, or memory)]
-  S --> K
 ```
 
-Server code lives in `lib/` (chat, FAQ, AI providers, guards, key-value client, leads) and is called from two route handlers in `app/api/`. The UI is in `app/` and `components/`.
+Server code lives in `lib/` (chat, FAQ, AI providers, guards, key-value client) and is called from one route handler, `app/api/chat`. The UI is in `app/` and `components/`.
 
 ## How the chatbot stays within the FAQ
 
@@ -50,25 +47,24 @@ Because retrieval is keyword-based, some off-topic questions that share a word w
 
 ## Security
 
-- **`redactPII`** replaces email addresses and phone-like digit runs with `[email]` and `[phone]` before text is retrieved against, sent to the AI provider or stored in a lead summary. It reduces risk; it is not complete (see Limitations).
-- **Rate limiting.** Chat: 20 messages per 10 minutes per session. Contact requests: 3 per session per 24 hours. Counters are atomic in Upstash Redis when it is configured; if the store is unreachable the app falls back to per-instance memory.
-- **Request guard (CSRF).** Both POST routes accept only `Content-Type: application/json`, reject a `Sec-Fetch-Site` other than `same-origin` or `none`, and reject an `Origin` that does not match the request host. A rejected request gets no cookie and reaches no limiter, provider or store.
+- **`redactPII`** replaces email addresses and phone-like digit runs with `[email]` and `[phone]` before the text is matched against the FAQ or sent to the AI provider. It reduces risk; it is not complete (see Limitations).
+- **Rate limiting.** Chat: 20 messages per 10 minutes per session, and 60 messages per 10 minutes per client (an anonymised key, so one client cannot get a fresh allowance by dropping its cookie). Counters are atomic in Upstash Redis when it is configured; if the store is unreachable the app falls back to per-instance memory.
+- **Request guard (CSRF).** The POST route `/api/chat` accepts only `Content-Type: application/json`, rejects a `Sec-Fetch-Site` other than `same-origin` or `none`, and rejects an `Origin` that does not match the request host. A rejected request gets no cookie and reaches no limiter or provider.
 - **Session cookie.** `nd_session` holds a random id plus an HMAC-SHA256 signature made with `SESSION_SECRET`. It is `HttpOnly`, `SameSite=Lax`, valid for 24 hours and `Secure` in production. In production the session code throws an error if `SESSION_SECRET` is missing or shorter than 16 characters, so it never signs with a weak key. It is an anonymous session, not a login.
 - **Security headers.** Every route, including API responses and the 404 page, sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and `Permissions-Policy: camera=(), microphone=(), geolocation=()` (set in `next.config.ts`, pinned by `tests/e2e/headers.spec.ts`). `Strict-Transport-Security` is added by Vercel, not by the app. Keep `Referrer-Policy` at `strict-origin-when-cross-origin` and do not use `no-referrer`: the request guard rejects `Origin: null`, which that policy could cause for some request types (not verified here; Chromium's default `fetch` still sent the real origin).
-- **Input limits.** Request bodies are capped at 32 KB, chat messages at 500 characters, and stored lead data at 4096 bytes.
-- **Rendering.** Stored lead text (name, note, summary) is rendered as plain text only.
-- **Logging.** The server logs only fixed kinds of failure (for example a provider or key-value failure kind). It never logs message text, contact details, keys or URLs.
+- **Input limits.** Request bodies are capped at 32 KB, and chat messages at 500 characters.
+- **Logging.** The server logs only fixed kinds of failure (for example a provider or key-value failure kind). It never logs message text, keys or URLs.
 
 ## Testing
 
 | Suite | Count | Command |
 | --- | --- | --- |
-| Unit and integration (Vitest) | 752 tests in 28 files | `npm test` |
-| End to end (Playwright, Chromium) | 97 tests in 8 files | `npm run build` then `npm run test:e2e` |
+| Unit and integration (Vitest) | 613 tests in 20 files | `npm test` |
+| End to end (Playwright, Chromium) | 127 tests in 8 files (0 `@live`) | `npm run build` then `npm run test:e2e` |
 
 Both counts come from real runs of the commit that carries this README (the e2e count from `playwright test --list`). The GitHub Actions workflow `.github/workflows/ci.yml` runs lint, `tsc --noEmit`, the unit tests, a production build and the e2e suite on every push to `main` and on pull requests. It uses no repository secrets and no real AI or database: AI runs in mock mode and the key-value store is disabled.
 
-The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the lead form and the `/leads` page (success, the 3-per-session limit, per-session isolation, plain-text rendering, client validation, chat history in the lead request), the request guard and lead API status codes, the security headers on a page, an API response and the 404 page, the icon links and theme color, and a viewport sweep (no horizontal overflow on five routes at ten sizes, from 320 px to 1920 px wide). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
+The Playwright suite in `tests/e2e/` drives the real production build in Chromium (desktop and a 375x667 phone project). It covers the chat answers and badges (AI answer, FAQ fallback, out of scope), the chat widget behaviour (conversation kept on close and reopen, Escape and focus, lazy panel chunk, chunk failure and "Try again"), the link from the chat to the contact form, the request guard on the chat API, the security headers on a page, an API response and the 404 page, the icon links and theme color, and a viewport sweep (no horizontal overflow on four routes at ten sizes, from 320 px to 1920 px wide). `tests/e2e/UI-CONTRACT.md` lists the test ids, roles and copy the tests rely on.
 
 ```bash
 npx playwright install chromium   # once
@@ -77,7 +73,7 @@ npm run test:e2e
 npx playwright show-report        # HTML report in playwright-report/
 ```
 
-The suite starts `next start` on port 3400 (it fails if the port is taken or if `npm run build` was not run). The server always runs with mock AI, a fake session secret and no key-value store (the four KV variables are forced to a blank value), so by design it does not use Groq or Upstash even if your shell or local env file contains keys. Leads and counters live in server memory, and each test uses its own browser context, so tests do not share a session.
+The suite starts `next start` on port 3400 (it fails if the port is taken or if `npm run build` was not run). The server always runs with mock AI, a fake session secret and no key-value store (the four KV variables are forced to a blank value), so by design it does not use Groq or Upstash even if your shell or local env file contains keys. Counters live in server memory, and each test uses its own browser context, so tests do not share a session.
 
 ### Live tests (`@live`, manual only)
 
@@ -91,7 +87,7 @@ It uses port 3401, never uses the key-value store, and stops with a clear error 
 
 ## Performance
 
-Measured on 2026-11-13 (about 03:47 to 03:50 UTC), after the security headers and icons were live, against the live site (https://northwind-dental.vercel.app/) with Lighthouse 13.5.0, run through `npx` (not installed in the project), default mobile preset, 3 runs per page; the table shows the median of the 3 runs. Conditions: headless Chrome 157 on a Windows PC in Vietnam, Lighthouse's default simulated throttling. Scores and timings change from run to run and with network conditions, so treat them as a snapshot, not a guarantee. `/leads` was not measured.
+Measured on 2026-11-13 (about 03:47 to 03:50 UTC), after the security headers and icons were live, against the live site (https://northwind-dental.vercel.app/) with Lighthouse 13.5.0, run through `npx` (not installed in the project), default mobile preset, 3 runs per page; the table shows the median of the 3 runs. Conditions: headless Chrome 157 on a Windows PC in Vietnam, Lighthouse's default simulated throttling. Scores and timings change from run to run and with network conditions, so treat them as a snapshot, not a guarantee.
 
 | Page | Performance | Accessibility | Best Practices | SEO | LCP (ms) | CLS | TBT (ms) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -121,7 +117,7 @@ All variables are server-only. Never add a `NEXT_PUBLIC_` prefix. `.env.example`
 | `AI_MODE` | No | `mock`, `groq` or `off`. Unset or any other value behaves as `off`. See "AI modes". |
 | `GROQ_API_KEY` | Only for `AI_MODE=groq` | API key for Groq. |
 | `GROQ_MODEL` | No | Groq model name. Defaults to `openai/gpt-oss-20b`. |
-| `GROQ_DAILY_CAP` | No | Most Groq calls the whole site makes per 24 hours, chat answers and lead categorisation together. A positive whole number; unset or invalid means 300. Over the limit the site answers from the FAQ. Used only with `AI_MODE=groq`. |
+| `GROQ_DAILY_CAP` | No | Most Groq calls the whole site makes per 24 hours, chat answers only. A positive whole number; unset or invalid means 300. Over the limit the site answers from the FAQ. Used only with `AI_MODE=groq`. |
 | `SESSION_SECRET` | Yes in production | Key for signing the session cookie, at least 16 characters. Outside production a fixed, insecure development value is used when it is missing. |
 | `UPSTASH_REDIS_REST_URL` | Recommended in production | Upstash Redis REST URL (must be `https://`). |
 | `UPSTASH_REDIS_REST_TOKEN` | Recommended in production | Upstash Redis REST token. |
@@ -129,7 +125,7 @@ All variables are server-only. Never add a `NEXT_PUBLIC_` prefix. `.env.example`
 | `KV_REST_API_TOKEN` | Alternative | Same as the `UPSTASH_REDIS_REST_TOKEN` above; read only if the `UPSTASH_*` pair is not set. |
 | `VERCEL_PROJECT_PRODUCTION_URL` | No | Set by Vercel, not by you. The production host name, used as `metadataBase` so that og:image URLs are absolute. Falls back to `http://localhost:3000`. |
 
-Without the key-value variables, rate-limit counters and leads are kept in memory of the single server process.
+Without the key-value variables, rate-limit counters are kept in memory of the single server process.
 
 ### AI modes
 
@@ -143,7 +139,7 @@ Without the key-value variables, rate-limit counters and leads are kept in memor
 
 1. Import the repository in Vercel (Node.js 26 is supported; `.nvmrc` and `engines` request it).
 2. Set these environment variables for Production: `SESSION_SECRET`, `AI_MODE`, and, when using Groq, `GROQ_API_KEY` (and optionally `GROQ_MODEL` and `GROQ_DAILY_CAP`).
-3. Add an Upstash Redis database and set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (or let the Vercel Marketplace integration set `KV_REST_API_URL` and `KV_REST_API_TOKEN`). This is required, not optional: without it each serverless instance keeps its own memory and `/leads` is unreliable.
+3. Add an Upstash Redis database and set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (or let the Vercel Marketplace integration set `KV_REST_API_URL` and `KV_REST_API_TOKEN`). This is required, not optional: without it each serverless instance keeps its own rate-limit and Groq-cap counters in memory.
 4. Keep the project setting "Enable access to System Environment Variables" (Settings, Environment Variables) turned on so that Vercel provides `VERCEL_PROJECT_PRODUCTION_URL` ([Vercel docs](https://vercel.com/docs/environment-variables/system-environment-variables), checked 2026-11-13).
 
 Do not set a `Referrer-Policy` of `no-referrer`: the request guard rejects `Origin: null`, which that policy could cause for some request types (for example form submissions; not verified here, Chromium's default `fetch` still sent the real origin).
@@ -151,16 +147,15 @@ Do not set a `Referrer-Policy` of `no-referrer`: the request guard rejects `Orig
 ## Limitations
 
 - **Images are AI-generated.** The clinic photos are rendered images made for this fictional clinic. They show no real people, doctors or logos. Service icons are hand-written SVG.
-- **Lead data is short-lived and stored at a third party.** A contact request (email, optional name and note, a category and a short summary derived from the redacted chat) is stored for 24 hours and then deleted. When the key-value store is configured, it is stored at Upstash.
-- **Upstash Free is not encrypted at rest.** According to the Upstash pricing page, encryption at rest is part of the paid "Prod Pack" add-on, which "can be purchased for any plan except the Free tier" ([Upstash pricing](https://upstash.com/pricing/redis), checked 2026-11-13). The connection itself uses TLS. Use only fake contact details in this demo.
-- **The memory fallback is per instance.** Without the key-value store, leads and counters live in one server process. Serverless instances (for example on Vercel) do not share it, so a deployment must configure the store.
+- **The contact form is a demo.** The "Request an appointment" form on `/contact` sends nothing and stores nothing. The key-value store is used only for the chat rate limit and the Groq daily cap (counters, no chat text).
+- **Upstash Free is not encrypted at rest.** According to the Upstash pricing page, encryption at rest is part of the paid "Prod Pack" add-on, which "can be purchased for any plan except the Free tier" ([Upstash pricing](https://upstash.com/pricing/redis), checked 2026-11-13). The connection itself uses TLS. Only counters are stored there.
+- **The memory fallback is per instance.** Without the key-value store, counters live in one server process. Serverless instances (for example on Vercel) do not share it, so a deployment must configure the store.
 - **`redactPII` reduces risk but is not complete.** It does not catch names or addresses typed in the chat, and it does not catch disguised emails such as "john at gmail dot com". It can also over-redact long digit runs such as dates, times and amounts (for example "2026-11-09 10:30" becomes "[phone]:30").
-- **Chat content is sent to Groq.** In `groq` mode, the redacted question, up to four redacted history items and the matching FAQ entries are sent to Groq. When a contact request is saved, the redacted chat history (up to six items) is also sent to Groq to pick a category and summary. Every request to Groq also carries a fixed system prompt. Form fields (name, email, note) are not sent. Because redaction is incomplete, do not type personal data into the chat.
-- **The Groq daily cap is best-effort.** `GROQ_DAILY_CAP` (default 300) limits real Groq calls per 24 hours for the whole site, chat answers and lead categorisation together. The 24 hours start at the first counted call, not at midnight. The cap uses the same counter store as the rate limiter, so without the key-value store, or while it is down, each server instance counts for itself and the real total can reach the cap times the number of instances. Over the cap the site answers from the FAQ, with no error and no AI label (the server writes one fixed log line per refused chat message), and a contact request is still saved, without a model summary. It does not apply to `mock` or `off` mode.
+- **Chat content is sent to Groq.** In `groq` mode, the redacted question, up to four redacted history items and the matching FAQ entries are sent to Groq. Every request to Groq also carries a fixed system prompt. The contact form sends nothing, so its fields never reach Groq. Because redaction is incomplete, do not type personal data into the chat.
+- **The Groq daily cap is best-effort.** `GROQ_DAILY_CAP` (default 300) limits real Groq calls per 24 hours for the whole site (chat answers only). The 24 hours start at the first counted call, not at midnight. The cap uses the same counter store as the rate limiter, so without the key-value store, or while it is down, each server instance counts for itself and the real total can reach the cap times the number of instances. Over the cap the site answers from the FAQ, with no error and no AI label (the server writes one fixed log line per refused chat message). It does not apply to `mock` or `off` mode.
 - **FAQ retrieval is keyword-based.** Some off-topic questions that share a word with the FAQ (for example "what is the price of bitcoin") reach the model, which is why the system prompt must refuse off-topic questions. In fallback mode (no AI), long multi-topic questions can score below the confidence threshold and get the out-of-scope reply.
 - **The rate limiter is best-effort.** It counts per session cookie, so a client that drops cookies gets a fresh counter. The in-memory limiter is per instance and fails open when its key cap is reached. It is not abuse-proof.
 - **No Content-Security-Policy.** A policy that blocks inline scripts needs a fresh nonce on every request, and Next.js can apply a nonce only when pages are rendered dynamically on each request. That would give up the static pages that are served from the CDN, so this demo ships the four headers above but no CSP.
-- **`/leads` is tied to the browser session, not to a person.** There is no login. A visitor sees only the requests saved under their own session cookie, and clearing cookies hides them.
 - **Not a real clinic.** The text on the site is demo copy. It makes no medical claims and no real appointment is booked.
 
 ## License

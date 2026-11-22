@@ -7,8 +7,6 @@ import { FAQ } from "@/lib/faq/data";
 
 const HOURS_ANSWER = FAQ.find((e) => e.id === "hours")!.answer;
 const HOURS_Q = "What time do you open?";
-const FORM = { email: "cap.visitor@clinic-mail.org", name: "Cap Visitor", note: "Call me" };
-const CHAT_HISTORY = [{ role: "user", content: "I want to book a cleaning" }];
 
 let n = 0;
 const sid = () => `cap-session-${++n}-abcdef`;
@@ -27,13 +25,7 @@ beforeEach(() => {
   vi.stubEnv("AI_MODE", "groq");
   vi.stubEnv("GROQ_API_KEY", "test-key-not-a-secret");
   vi.stubEnv("GROQ_DAILY_CAP", "2");
-  // The model answers a chat question with plain text and a lead classification with JSON.
-  fetchMock = vi.fn(async (_url: unknown, init?: { body?: string }) => {
-    const body = String(init?.body ?? "");
-    return body.includes("Classify the conversation above")
-      ? groqReply(JSON.stringify({ category: "booking", summary: "Wants to book a cleaning." }))
-      : groqReply("Model answer about opening hours.");
-  });
+  fetchMock = vi.fn(async () => groqReply("Model answer about opening hours."));
   vi.stubGlobal("fetch", fetchMock);
 });
 
@@ -46,28 +38,12 @@ afterEach(() => {
 async function modules() {
   const { getProvider } = await import("@/lib/ai");
   const { handleChat } = await import("@/lib/chat/handleChat");
-  const { handleCreateLead } = await import("@/lib/leads/handleLead");
-  const { createMemoryLeadStore } = await import("@/lib/leads/store");
-  const { checkRateLimit, createMemoryCounterStore } = await import("@/lib/guard/rateLimit");
-  const leadCounter = createMemoryCounterStore();
   const chat = async () => {
     const r = await handleChat({ message: HOURS_Q, history: [], sessionId: sid(), ipKey: sid() }, { provider: getProvider() });
     if (r.status !== 200) throw new Error(`expected 200, got ${r.status}`);
     return r.body;
   };
-  const lead = async () => {
-    const r = await handleCreateLead(
-      { body: { ...FORM, history: CHAT_HISTORY }, sessionId: sid() },
-      {
-        provider: getProvider(),
-        store: createMemoryLeadStore(),
-        limiter: (key, opts) => checkRateLimit(key, opts, leadCounter),
-      },
-    );
-    if (r.status !== 201) throw new Error(`expected 201, got ${r.status}`);
-    return r.body.lead;
-  };
-  return { getProvider, chat, lead };
+  return { getProvider, chat };
 }
 
 describe("Groq daily cap: chat", () => {
@@ -90,34 +66,6 @@ describe("Groq daily cap: chat", () => {
     expect(warn).toHaveBeenCalledWith("[chat] provider failure: rate_limit (groq daily cap reached)");
     // Still over the cap on the next call.
     expect((await chat()).source).toBe("faq-fallback");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("Groq daily cap: lead categorisation", () => {
-  it("over the cap the lead is still saved, with a keyword category and no model summary, and Groq is not called", async () => {
-    vi.stubEnv("GROQ_DAILY_CAP", "1");
-    const { lead } = await modules();
-    const first = await lead();
-    expect(first).toMatchObject({ category: "booking", summary: "Wants to book a cleaning." });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    const second = await lead();
-    expect(second.category).toBe("booking"); // keywords: "book" in the chat
-    expect(second.summary).toBeUndefined();
-    expect(second.email).toBe(FORM.email);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("Groq daily cap: one counter for chat and lead together", () => {
-  it("a chat answer and a lead classification share the same two slots", async () => {
-    const { chat, lead } = await modules();
-    expect((await chat()).source).toBe("ai"); // slot 1
-    expect((await lead()).summary).toBe("Wants to book a cleaning."); // slot 2
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect((await chat()).source).toBe("faq-fallback");
-    expect((await lead()).summary).toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

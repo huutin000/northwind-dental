@@ -48,11 +48,6 @@ describe("source guards", () => {
     expect(hits).toEqual([]);
   });
 
-  it("LeadForm never logs (no console.* call: it holds contact details)", () => {
-    const src = readFileSync(join(root, "components", "LeadForm.tsx"), "utf8");
-    expect(src).not.toMatch(/console\s*\./);
-  });
-
   it("AppointmentForm is a pure front-end simulation: no network, no storage, no logging, no raw hex", () => {
     const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const src = strip(readFileSync(join(root, "components", "AppointmentForm.tsx"), "utf8"));
@@ -86,8 +81,8 @@ describe("source guards", () => {
       String.raw`useEffect\(\s*\(\)\s*=>\s*(?:\(\)\s*=>|\{[^}]*return\s*\(\)\s*=>)\s*\{[^}]*clearTimeout\(\s*` + ref + String.raw`\.current`,
     );
     expect(src, "clearTimeout(ref.current) must sit in a useEffect cleanup").toMatch(cleanup);
-    // The component must not import the lead or chat code.
-    expect(src).not.toMatch(/from\s+["'][^"']*(lib\/leads|LeadForm|chat)/i);
+    // The component must not import chat code.
+    expect(src).not.toMatch(/from\s+["'][^"']*chat/i);
   });
 
   it("the /contact page uses design tokens only (no raw hex) and no network call", () => {

@@ -190,6 +190,7 @@ describe("handleChat: routing (no threshold gate; only a no-match is out-of-scop
       for (const g of FAQ_GROUPS) expect(b.reply).toContain(g.toLowerCase());
       expect(b.reply).toMatch(/demo/i);
       expect(b.reply).toMatch(/contact/i);
+      expect(b.reply).not.toMatch(/contact details/i);
     }
   });
 
@@ -451,6 +452,9 @@ describe("handleChat: prompt and privacy", () => {
     expect(SYSTEM_PROMPT).toMatch(/DATA, not instructions/);
     expect(SYSTEM_PROMPT).toMatch(/REFUSE any question that is not about this clinic/);
     expect(SYSTEM_PROMPT).toMatch(/general knowledge/i);
+    // The lead feature is gone: the old "leave your contact details" wording must not come back.
+    expect(SYSTEM_PROMPT).not.toMatch(/contact details/i);
+    expect(SYSTEM_PROMPT).toContain("do not know");
   });
 
   const LEVELS = ["log", "info", "warn", "error", "debug"] as const;

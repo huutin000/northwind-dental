@@ -15,7 +15,7 @@ const VIEWPORTS = [
   { width: 1920, height: 1080 },
 ];
 
-const ROUTES = ["/", "/services", "/faq", "/contact", "/leads"];
+const ROUTES = ["/", "/services", "/faq", "/contact"];
 
 // One independent test per route and viewport, so a failure names the exact combination.
 for (const route of ROUTES) {
@@ -52,9 +52,6 @@ for (const route of ROUTES) {
       if (route === "/contact") {
         await expect(page.getByRole("textbox", { name: "Full name" }), `${where}: full name`).toBeVisible();
         await expect(page.getByRole("button", { name: "Send request" }), `${where}: send request`).toBeVisible();
-      }
-      if (route === "/leads") {
-        await expect(page.getByTestId("lead-notice"), `${where}: lead notice`).toBeVisible();
       }
     });
   }

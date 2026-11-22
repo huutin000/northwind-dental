@@ -119,8 +119,8 @@ export default function HomePage() {
               A small dental clinic with a friendly welcome
             </h1>
             <p className={`${lead} motion-safe:animate-rise motion-safe:[animation-delay:0.1s]`}>
-              Check-ups, cleanings and fillings in a light-filled space. Tell us what you need and we will plan
-              your visit together.
+              Check-ups, cleanings and fillings in a light-filled space. Read what each visit involves, or try
+              the demo request form.
             </p>
             <div className="mt-1.5 flex w-full flex-wrap gap-3 motion-safe:animate-rise motion-safe:[animation-delay:0.18s]">
               <Link href="/contact" className={btnPrimary}>
@@ -319,7 +319,7 @@ export default function HomePage() {
               Ready when you are
             </h2>
             <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
-              Tell us what you need and we will plan your visit around it.
+              Try the demo request form to see how booking would look. It sends nothing.
             </p>
             <div className="mt-1.5 flex w-full flex-wrap gap-3">
               <Link href="/contact" className={btnPrimary}>
