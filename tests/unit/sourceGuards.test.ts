@@ -53,6 +53,49 @@ describe("source guards", () => {
     expect(src).not.toMatch(/console\s*\./);
   });
 
+  it("AppointmentForm is a pure front-end simulation: no network, no storage, no logging, no raw hex", () => {
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const src = strip(readFileSync(join(root, "components", "AppointmentForm.tsx"), "utf8"));
+    expect(src.length).toBeGreaterThan(500);
+    for (const re of [
+      /\bfetch\s*\(/,
+      /XMLHttpRequest/,
+      /sendBeacon/,
+      /WebSocket/,
+      /EventSource/,
+      /\/api\//,
+      /localStorage/,
+      /sessionStorage/,
+      /document\.cookie/,
+      /indexedDB/,
+      /console\s*\./,
+      /dangerously/i,
+      /innerHTML/,
+    ]) {
+      expect(src, String(re)).not.toMatch(re);
+    }
+    expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    // Structural check of the timer clean-up. It proves that the handle returned by setTimeout is stored in a ref and
+    // that a useEffect cleanup function (arrow returning an arrow, or `return () =>`) calls clearTimeout on that same
+    // ref. It does NOT prove the cleanup runs at runtime; the e2e test "the 1200 ms timer is cleared when the form
+    // unmounts" (tests/e2e/contact.spec.ts) records the real setTimeout and clearTimeout ids for that.
+    const stored = src.match(/(\w+)\.current\s*=\s*setTimeout\(/);
+    expect(stored, "the setTimeout handle must be kept in a ref").not.toBeNull();
+    const ref = stored![1];
+    const cleanup = new RegExp(
+      String.raw`useEffect\(\s*\(\)\s*=>\s*(?:\(\)\s*=>|\{[^}]*return\s*\(\)\s*=>)\s*\{[^}]*clearTimeout\(\s*` + ref + String.raw`\.current`,
+    );
+    expect(src, "clearTimeout(ref.current) must sit in a useEffect cleanup").toMatch(cleanup);
+    // The component must not import the lead or chat code.
+    expect(src).not.toMatch(/from\s+["'][^"']*(lib\/leads|LeadForm|chat)/i);
+  });
+
+  it("the /contact page uses design tokens only (no raw hex) and no network call", () => {
+    const src = readFileSync(join(root, "app", "(site)", "contact", "page.tsx"), "utf8");
+    expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(src).not.toMatch(/\bfetch\s*\(|console\s*\./);
+  });
+
   it("chat widget files never log and never touch browser storage", () => {
     for (const rel of [["components", "chat", "ChatPanel.tsx"], ["components", "ChatWidget.tsx"]]) {
       const src = readFileSync(join(root, ...rel), "utf8");

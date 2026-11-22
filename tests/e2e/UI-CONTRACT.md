@@ -14,7 +14,7 @@ comparison. No fixed sleeps (use `expect` auto-wait).
 | `/` | static | `h1`, `navigation` named "Main", `main` landmark |
 | `/services` | static | `h1`, `navigation` named "Main", `main` |
 | `/faq` | static | `h1`, `navigation` named "Main", `main` |
-| `/contact` | static | `h1`, the lead form (see below) |
+| `/contact` | static | `h1` "Request an appointment", the simulated appointment form (see below) |
 | `/leads` | dynamic, per session | `h1` "Your requests", `lead-notice`, `lead-empty` or `lead-list-item` |
 | `POST /api/chat`, `POST /api/leads`, `GET /api/leads` | route handlers | status codes in "API contract" |
 
@@ -38,14 +38,18 @@ Chat widget (`components/ChatWidget.tsx`, `components/chat/*`)
 - `chat-retry` : the "Try again" button inside the failure box.
 - Roles: `log` named "Conversation" (message list); `status` named "Thinking" while a reply is pending.
 
-Lead form (`components/LeadForm.tsx`, `components/LeadNotice.tsx`) on `/contact`
-- `lead-email`, `lead-name`, `lead-note` : the fields, each with a visible `<label>` (ids `lead-email`, `lead-name`, `lead-note`).
-- `lead-submit` : the submit button. `lead-error` : assertive live region for submit errors (always mounted).
-- `lead-success` : the confirmation box (focus target after success). `lead-view-link` : link to `/leads` inside it.
-- `lead-notice` : the demo banner of the lead feature. Exact text: "This is a demo. Please use a fake email. Data is deleted after 24 hours."
-  It is shown next to the form and at the top of `/leads`.
-- Honeypot: `input[name="website"]` (id `lead-website`), inside an `aria-hidden` container, `tabindex="-1"`. It has no test id
-  on purpose: tests must not fill it through the UI; the API tests send `website` directly.
+Appointment form (`components/AppointmentForm.tsx`) on `/contact` (SIMULATION: sends nothing, no test ids; tests use roles, labels and visible text)
+- Region "Appointment request form" (`section[aria-labelledby="form-heading"]`, sr-only `h2#form-heading`; the chat link `/contact#form-heading` targets it).
+- Groups (`fieldset` + `legend`): "About you" (textboxes "Full name", "Phone", "Email"), "Your visit" (combobox "Service", labels "Preferred date" and "Preferred time (open 9:00 to 17:00)", textbox "Notes (optional)").
+- Service options in order: "Choose a service" (value empty), Check-up, Cleaning, Filling, Whitening, Root canal, Crowns and bridges, Children's dentistry.
+- None of the controls has a `name` attribute (a native submit before hydration cannot put typed data in the URL); tests locate controls by role, label or id. The Send button keeps its width in the "Sending request" state from `sm` up, and the date and time inputs share top and bottom edges.
+- Buttons: "Send request" (while sending: "Sending request", disabled; the form has `aria-busy="true"`; the sr-only `role="status"` "Sending request" paragraph is a sibling AFTER the form), "Make another request" (success panel).
+- Invalid submit: `role="alert"` banner: exactly 1 message reads "Check the field marked below, then send your request again."; N >= 2 reads "Check the N fields marked below, then send your request again." (N = number of messages, date and time share one; N is fixed at submit time and does not change while the visitor edits; the banner disappears when no error remains); each invalid field has `aria-invalid="true"` and `aria-describedby` pointing at its message; focus goes to the first invalid field (set after the error state is committed). For date and time only the EMPTY input(s) are flagged and linked to the shared message (date filled + time empty flags only the time, and the mirror; both empty flags both); the message clears only once both are filled.
+- Messages: "Enter your full name.", "Enter a phone number with at least 7 digits.", "Enter an email address like name@example.com.", "Choose a service.", "Pick a preferred date and time.".
+- Success: `role="status"` panel with focus, heading "Request received (demo)", `dl` recap (Name, Service, Preferred, Contact) as plain text. "Make another request" resets and focuses "Full name".
+- "Demo only. This form does not send anything." is visible in the form state. The form makes NO request to `/api/*` and uses no storage.
+
+The old lead form (`components/LeadForm.tsx`) is no longer rendered anywhere; its test ids (`lead-email`, `lead-name`, `lead-note`, `lead-submit`, `lead-error`, `lead-success`, `lead-view-link`) no longer exist in the UI. `lead-notice` (`components/LeadNotice.tsx`) is still shown at the top of `/leads`.
 
 Leads page (`app/leads/page.tsx`)
 - `lead-empty` : empty state (no cookie, invalid cookie, no leads, or a store error).
@@ -53,8 +57,8 @@ Leads page (`app/leads/page.tsx`)
 
 ## Required copy (the only exact strings the tests may assert)
 
-- Lead banner (above).
-- 429 on the lead form: "You have reached the request limit for this demo. Please try again tomorrow."
+- Lead banner on `/leads` (`lead-notice`): "This is a demo. Please use a fake email. Data is deleted after 24 hours."
+- Appointment form messages and headings (listed above).
 - Chat source labels: "AI answer", "From our FAQ", "Outside my scope".
 - The `hours` FAQ answer (scenario 3) is read from `lib/faq/data.ts` (entry id `hours`), never copied into the test.
 
@@ -70,17 +74,19 @@ Chat
 5. If the panel chunk fails to load, the rest of the page keeps working: header and `chat-toggle` stay visible, `chat-panel-error`
    with `chat-retry` appears; after the chunk is reachable again, `chat-retry` opens the panel and focuses `chat-input`.
    Closing and reopening a failed panel shows the same failure box until `chat-retry` is pressed.
-6. Out-of-scope answers show `chat-contact-hint`; following `chat-contact-link` closes the panel and navigates to `/contact`.
-7. The in-memory history reaches the lead request: after a chat, the `POST /api/leads` body carries the last real turns.
+6. Out-of-scope answers show `chat-contact-hint`; following `chat-contact-link` closes the panel and navigates to `/contact#form-heading`.
+7. (Retired as an e2e test: the form that sent the chat history is gone from /contact. The API-level history handling stays covered by `tests/integration/leads.test.ts`.)
 8. The mock provider answers "AI answer"; a question containing `__mock_429__` makes it fail, which must produce "From our FAQ" with
    the verbatim FAQ answer.
 
-Lead
-9. Requests are same-origin `POST` with `Content-Type: application/json`.
-10. Client validation runs first: an invalid email focuses `lead-email` and shows an error linked by `aria-describedby`.
-11. After success focus moves to `lead-success`. After a failed submit focus moves to the first invalid field or to `lead-error`.
-12. The 4th lead of a session is answered with 429 and the message above. A lead is visible on `/leads` for the session that created it only.
+Lead (API and /leads only; leads are created through the real API in the tests, not through a form)
+9. Requests are same-origin `POST` with `Content-Type: application/json` and a same-origin `Origin` header.
+12. The 4th lead of a session is answered with 429. A lead is visible on `/leads` for the session that created it only.
 13. Stored text is rendered as plain text (no HTML injection) on `/leads`.
+
+Appointment form
+9a. Client validation only; a valid submit shows "Sending request" for exactly 1200 ms (tests drive it with `page.clock`, no fixed sleeps), then the success panel (focus on it). The timer is cleared when the form unmounts. No network call.
+9b. Out-of-scope chat answers link to `/contact#form-heading`; that anchor exists on the new page.
 
 Layout
 14. No horizontal overflow (`scrollWidth <= clientWidth`) at the widths used by the sweep, on every route.

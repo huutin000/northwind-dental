@@ -1,7 +1,6 @@
 // Shared helpers for the e2e specs. Selectors come only from UI-CONTRACT.md.
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
-export const LEAD_LIMIT_MESSAGE = "You have reached the request limit for this demo. Please try again tomorrow.";
 export const LEAD_NOTICE = "This is a demo. Please use a fake email. Data is deleted after 24 hours.";
 
 let counter = 0;
@@ -60,24 +59,37 @@ export async function ask(page: Page, text: string, turn: number) {
   return bubble;
 }
 
-/** Fills and submits the lead form on the current page (/contact). Returns the email used. */
-export async function fillAndSubmitLead(
-  page: Page,
-  values: { email?: string; name?: string; note?: string } = {},
-): Promise<string> {
-  // Never fill or submit before React owns the form: a native submit would reload the page.
-  await waitForHydration(page, "lead-submit");
+/**
+ * Creates a lead through the REAL API (the old lead form is no longer on /contact). `request` should be
+ * `page.request` so the session cookie is shared with the page and the lead shows up on /leads.
+ * Sends what the request guard requires: Content-Type application/json and a same-origin Origin header.
+ */
+export async function createLeadViaApi(
+  request: APIRequestContext,
+  baseURL: string | undefined,
+  values: { email?: string; name?: string; note?: string; history?: { role: string; content: string }[] } = {},
+): Promise<{ email: string; status: number }> {
   const email = values.email ?? fakeEmail();
-  await page.getByTestId("lead-email").fill(email);
-  if (values.name !== undefined) await page.getByTestId("lead-name").fill(values.name);
-  if (values.note !== undefined) await page.getByTestId("lead-note").fill(values.note);
-  await page.getByTestId("lead-submit").click();
-  return email;
+  const res = await request.post("/api/leads", {
+    headers: { "Content-Type": "application/json", Origin: new URL(baseURL!).origin },
+    data: { email, name: values.name, note: values.note, history: values.history ?? [], website: "" },
+  });
+  return { email, status: res.status() };
 }
 
 /** A second, fully isolated browser context (own cookies, so own server session). */
 export async function isolatedContext(browser: Browser, baseURL: string | undefined): Promise<BrowserContext> {
   return browser.newContext({ baseURL });
+}
+
+/** Same idea as waitForHydration, for a locator without a test id (the appointment form has none). */
+export async function waitForHydrated(locator: Locator): Promise<void> {
+  await expect
+    .poll(() => locator.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$"))), {
+      message: "React has not hydrated the element",
+      timeout: 15_000,
+    })
+    .toBe(true);
 }
 
 export async function horizontalScroll(page: Page): Promise<{ scrollWidth: number; clientWidth: number }> {

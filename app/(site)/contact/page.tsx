@@ -1,67 +1,72 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import AppointmentForm from "@/components/AppointmentForm";
 import { clinic } from "@/components/clinic";
-import LeadForm from "@/components/LeadForm";
 
 export const metadata: Metadata = {
-  title: "Contact & Appointments",
+  title: "Request an appointment",
   description:
-    "Request an appointment or reach out to Northwind Dental (fictional boutique clinic). Opening hours, address, and demo booking form.",
+    "A demo appointment request form for Northwind Dental, a fictional clinic in Sampletown, with opening hours and contact details. Nothing is sent to a real clinic.",
 };
 
-const eyebrow = "text-[0.8125rem] font-bold uppercase tracking-[0.1em] text-brand";
-const dl = "grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5";
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// The first OPEN_DAYS weekday chips are open days (see hours in components/clinic.ts).
+const OPEN_DAYS = 5;
+const [openLine, closedLine] = clinic.hoursSummary.split(/(?<=\.)\s+/);
 const dt = "text-muted";
-const dd = "m-0 min-w-0 break-words font-medium text-ink";
+const dd = "m-0 min-w-0 break-words font-semibold text-ink";
 
 export default function ContactPage() {
   return (
     <div className="page-wrap pb-[clamp(3.5rem,8vw,6rem)] pt-[clamp(1.5rem,4vw,4.5rem)]">
       <div className="grid justify-items-start gap-4">
-        <p className={`${eyebrow} motion-safe:animate-rise`}>Contact</p>
-        <h1 className="text-[clamp(2.125rem,1.3rem+3.6vw,3.625rem)] leading-[1.08] text-ink">Book a visit</h1>
-        <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-muted motion-safe:animate-rise motion-safe:[animation-delay:0.1s]">
-          Leave your details and tell us what you need. This is a demo, so please use a fake email.
+        <h1 className="text-[clamp(2.125rem,1.3rem+3.6vw,3.625rem)] leading-[1.08] text-ink">Request an appointment</h1>
+        <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-muted">
+          Tell us what you need and when suits you. This is a demo, so nothing is sent to a real clinic.
         </p>
       </div>
 
-      <div className="mt-8 grid items-start gap-8 lg:mt-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12">
+      <div className="mt-8 grid items-start gap-8 lg:mt-10 lg:grid-cols-[1.9fr_0.85fr] lg:gap-12">
         <section
           aria-labelledby="form-heading"
-          className="grid min-w-0 gap-5 rounded-panel border border-line bg-surface p-[clamp(1.25rem,4vw,2rem)] shadow-soft"
+          className="min-w-0 rounded-panel border border-line bg-surface p-[clamp(1.25rem,4vw,3rem)] shadow-soft"
         >
-          <div>
-            <h2 id="form-heading" className="text-2xl text-ink">
-              Request an appointment
-            </h2>
-            <p className="mt-1 text-muted">
-              Leave an email address and an optional note. This is a demo: nothing is sent to a real clinic.
-            </p>
-          </div>
-
-          <LeadForm />
+          <h2 id="form-heading" className="sr-only">
+            Appointment request form
+          </h2>
+          <AppointmentForm />
         </section>
 
-        <div className="grid min-w-0 gap-4">
-          <section aria-labelledby="hours-heading" className="grid gap-3 rounded-card bg-tint p-5.5">
-            <h2 id="hours-heading" className="font-sans text-lg font-bold tracking-normal text-ink">
+        <div className="grid min-w-0 gap-6">
+          <section aria-labelledby="hours-heading" className="grid gap-4 rounded-card bg-tint p-6">
+            <h2 id="hours-heading" className="font-sans text-xl font-bold tracking-normal text-ink">
               Opening hours
             </h2>
-            <dl className={dl}>
-              {clinic.hours.map((h) => (
-                <div key={h.days} className="contents">
-                  <dt className={dt}>{h.days}</dt>
-                  <dd className={dd}>{h.time}</dd>
-                </div>
+            <ul aria-hidden="true" className="m-0 flex list-none gap-1.5 p-0">
+              {DAYS.map((day, i) => (
+                <li
+                  key={day}
+                  className={
+                    i < OPEN_DAYS
+                      ? "min-w-0 flex-1 rounded-control bg-tint-strong py-2.5 text-center text-xs font-bold text-ink sm:text-sm"
+                      : "min-w-0 flex-1 rounded-control border border-dashed border-edge py-2.5 text-center text-xs text-muted sm:text-sm"
+                  }
+                >
+                  {day}
+                </li>
               ))}
-            </dl>
+            </ul>
+            <p className="m-0 text-base font-bold text-ink">{openLine}</p>
+            {closedLine ? <p className="m-0 text-base text-muted">{closedLine}</p> : null}
           </section>
 
-          <section aria-labelledby="info-heading" className="grid gap-3 rounded-card bg-sand p-5.5">
-            <h2 id="info-heading" className="font-sans text-lg font-bold tracking-normal text-ink">
+          <section
+            aria-labelledby="info-heading"
+            className="grid gap-4 rounded-t-[12rem] rounded-b-card bg-sand px-6 pb-6 pt-[clamp(3rem,6vw,4.5rem)]"
+          >
+            <h2 id="info-heading" className="text-center font-sans text-xl font-bold tracking-normal text-ink">
               Find us
             </h2>
-            <dl className={dl}>
+            <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2.5">
               <dt className={dt}>Address</dt>
               <dd className={dd}>{clinic.address}</dd>
               <dt className={dt}>Phone</dt>
@@ -69,18 +74,8 @@ export default function ContactPage() {
               <dt className={dt}>Email</dt>
               <dd className={dd}>{clinic.email}</dd>
             </dl>
-            <p className="text-sm text-muted">Fictional details for this demo.</p>
+            <p className="m-0 text-sm text-muted">Fictional details for this demo.</p>
           </section>
-
-          <Image
-            src="/images/waiting-lounge.webp"
-            alt="A bright imaging room with two scanners, a light oak wall and a window"
-            width={1376}
-            height={768}
-            loading="lazy"
-            sizes="(min-width: 1160px) 440px, (min-width: 1024px) 42vw, 100vw"
-            className="aspect-[4/3] w-full rounded-panel bg-tint-strong object-cover shadow-lift"
-          />
         </div>
       </div>
     </div>

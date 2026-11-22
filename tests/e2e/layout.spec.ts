@@ -50,8 +50,8 @@ for (const route of ROUTES) {
       await expect(page.getByTestId("chat-toggle"), `${where}: toggle fully in viewport`).toBeInViewport({ ratio: 1 });
 
       if (route === "/contact") {
-        await expect(page.getByTestId("lead-email"), `${where}: lead email`).toBeVisible();
-        await expect(page.getByTestId("lead-submit"), `${where}: lead submit`).toBeVisible();
+        await expect(page.getByRole("textbox", { name: "Full name" }), `${where}: full name`).toBeVisible();
+        await expect(page.getByRole("button", { name: "Send request" }), `${where}: send request`).toBeVisible();
       }
       if (route === "/leads") {
         await expect(page.getByTestId("lead-notice"), `${where}: lead notice`).toBeVisible();
