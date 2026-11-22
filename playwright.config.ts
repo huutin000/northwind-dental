@@ -42,8 +42,8 @@ export default defineConfig({
     { name: "chromium", testIgnore: /mobile\.spec\.ts/, use: { ...devices["Desktop Chrome"] } },
     {
       name: "mobile",
-      // Only the UI flows (and the phone-only test) run on a phone; the sweep sets its own viewports and the API tests have no UI.
-      testMatch: /(chat|lead|mobile)\.spec\.ts/,
+      // Only the chat UI flows (and the phone-only test) run on a phone; the sweep sets its own viewports and the API tests have no UI.
+      testMatch: /(chat|mobile)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 375, height: 667 },

@@ -161,7 +161,7 @@ export default function ServicesPage() {
               Not sure which visit you need?
             </h2>
             <p className="max-w-[52ch] text-[1.1875rem] leading-relaxed text-ink">
-              Tell us what you need and we will plan your visit around it. The FAQ covers hours, booking and costs.
+              Try the demo request form to see how booking would look. The FAQ covers hours, booking and costs.
             </p>
             <div className="mt-1.5 flex w-full flex-wrap gap-3">
               <Link href="/contact" className={btnPrimary}>

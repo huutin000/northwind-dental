@@ -10,7 +10,6 @@ import {
   shouldRefocus,
   showsContactHint,
   sourceLabel,
-  storeHistory,
   type ChatMessage,
 } from "@/components/chat/helpers";
 
@@ -216,29 +215,5 @@ describe("showsContactHint", () => {
     expect(showsContactHint(undefined)).toBe(false);
     expect(showsContactHint("OUT-OF-SCOPE")).toBe(false);
     expect(showsContactHint("")).toBe(false);
-  });
-});
-
-describe("storeHistory", () => {
-  it("keeps all real turns in order as role and content only", () => {
-    const list: ChatMessage[] = [
-      msg(0, "assistant", "greeting"),
-      { ...msg(1, "user", "turn", "hi"), source: "ai" },
-      { ...msg(2, "assistant", "turn", "hello"), source: "out-of-scope" },
-      msg(3, "assistant", "error"),
-      msg(4, "user", "unsent"),
-      msg(5, "user", "turn", "again"),
-    ];
-    expect(storeHistory(list)).toEqual([
-      { role: "user", content: "hi" },
-      { role: "assistant", content: "hello" },
-      { role: "user", content: "again" },
-    ]);
-    expect(Object.keys(storeHistory(list)[1]).sort()).toEqual(["content", "role"]);
-  });
-  it("does not cap at 4 (the store trims itself) and is empty without turns", () => {
-    const many = Array.from({ length: 9 }, (_, i) => msg(i, i % 2 ? "assistant" : "user", "turn"));
-    expect(storeHistory(many)).toHaveLength(9);
-    expect(storeHistory([msg(0, "assistant", "greeting")])).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-// Site-wide daily cap on real Groq calls (chat answers AND lead categorisation).
+// Site-wide daily cap on real Groq calls (chat answers only).
 //
 // Why: Groq usage costs quota. One counter for the whole site, not per visitor.
 //
@@ -8,10 +8,9 @@
 // KV is down). The counter key is the constant "groq-daily": no session id, no personal data.
 // The mock provider and AI_MODE=off are never wrapped, so they neither count nor change.
 //
-// Over the cap the inner provider is NOT called and a ProviderError is thrown. Both callers
-// already turn any ProviderError into the FAQ fallback: handleChat answers from the FAQ
-// (no AI badge, no error shown) and writes its single fixed `[chat] provider failure` line;
-// lead categorisation falls back to keywords silently. The visitor sees no error either way.
+// Over the cap the inner provider is NOT called and a ProviderError is thrown. handleChat
+// already turns any ProviderError into the FAQ fallback: it answers from the FAQ (no AI
+// badge, no error shown) and writes its single fixed `[chat] provider failure` line.
 //
 // Limits (also in README): the counter is best-effort. Without KV, or while it is down, each
 // server instance has its own memory counter, so the real total can be up to cap x instances.

@@ -6,27 +6,24 @@
 // Without KV_LIVE_TEST=1 the suite is skipped. With KV_LIVE_TEST=1 but no valid
 // Upstash variables it FAILS (it never skips silently).
 //
-// Keys: counter and scratch keys use a random `qa-live-<hex>:` prefix; lead tests
-// use a fake session id `deadbeefdeadbeef` + 16 random hex characters (32 hex in all).
-// These namespaces are test-only, so beforeAll/afterAll sweep them with SCAN (see sweep())
-// to also remove leftovers of an interrupted run. Before any DEL, only keys that really
-// start with one of the exact prefixes below are kept. Nothing else is ever deleted.
+// Keys: counter and scratch keys use a random `qa-live-<hex>:` prefix. This namespace is
+// test-only, so beforeAll/afterAll sweep it with SCAN (see sweep()) to also remove
+// leftovers of an interrupted run. Before any DEL, only keys that really start with the
+// exact prefix below are kept. Nothing else is ever deleted.
 //
-// Output: durations and request counts only. Never the URL, token, keys, ids or lead data.
+// Output: durations and request counts only. Never the URL, token or keys.
 
 import { randomBytes } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { getKvStatus, type KvClient } from "@/lib/kv/upstash";
 import { createKvCounterStore } from "@/lib/kv/counterStore";
-import { createKvLeadStore, LEAD_INDEX_MAX } from "@/lib/leads/store";
 
 const enabled = process.env.KV_LIVE_TEST === "1";
 const status = getKvStatus();
 
-// The only three namespaces the sweep may touch (SCAN patterns, and the exact prefixes
+// The only namespace the sweep may touch (SCAN pattern, and the exact prefix
 // that every found key must still have before it is deleted).
-const FAKE_SESSION_PREFIX = "deadbeefdeadbeef";
-const SWEEP_PREFIXES = ["qa-live-", `lead:${FAKE_SESSION_PREFIX}`, `leads:${FAKE_SESSION_PREFIX}`];
+const SWEEP_PREFIXES = ["qa-live-"];
 const SWEEP_PATTERNS = SWEEP_PREFIXES.map((p) => `${p}*`);
 const SWEEP_MAX_LOOPS = 50;
 const DEL_CHUNK = 100;
@@ -49,7 +46,6 @@ if (enabled && status.state !== "ok") {
       tracked.add(k);
       return k;
     };
-    const newSession = () => `${FAKE_SESSION_PREFIX}${randomBytes(8).toString("hex")}`; // 32 hex chars
     const ttlOf = async (k: string) => (await kv.command(["TTL", k])) as number;
 
     // Count requests by wrapping fetch (the client looks it up at call time).
@@ -88,7 +84,7 @@ if (enabled && status.state !== "ok") {
       }
     }
 
-    // SCAN (never KEYS) for exactly the three test-only patterns, COUNT 100, until the
+    // SCAN (never KEYS) for exactly the one test-only pattern, COUNT 100, until the
     // cursor is "0" (at most 50 loops each), then DEL only what was found.
     async function sweep() {
       const found = new Set<string>();
@@ -173,65 +169,6 @@ if (enabled && status.state !== "ok") {
         const ttl = await ttlOf(k);
         expect(ttl).toBeGreaterThanOrEqual(1);
         expect(ttl).toBeLessThanOrEqual(60);
-      }));
-
-    it("lead store: add, list (newest first), count, idempotent retry, real 24h TTLs", () =>
-      timed("lead store", async () => {
-        const sid = newSession();
-        const ids = ["live-lead-0001", "live-lead-0002"];
-        const keys = [...ids.map((id) => `lead:${sid}:${id}`), `leads:${sid}`];
-        keys.forEach(track);
-        const store = createKvLeadStore(kv);
-        expect(await store.list(sid)).toEqual([]);
-
-        const mk = (id: string, i: number) => ({
-          id,
-          createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
-          email: `live${i}@example.com`,
-          category: "other" as const,
-        });
-        await store.add(sid, mk(ids[0], 1));
-        await store.add(sid, mk(ids[1], 2));
-        await store.add(sid, mk(ids[1], 2)); // a retry of the same lead
-
-        expect((await store.list(sid)).map((l) => l.id)).toEqual([ids[1], ids[0]]);
-        expect(await store.count(sid)).toBe(2);
-
-        // One request for all three TTLs.
-        const ttls = (await kv.pipeline(keys.map((k) => ["TTL", k]))) as number[];
-        for (const ttl of ttls) {
-          expect(ttl).toBeGreaterThan(86000);
-          expect(ttl).toBeLessThanOrEqual(86400);
-        }
-      }));
-
-    it("lead store: the index is capped by LTRIM", () =>
-      timed("LTRIM cap", async () => {
-        const sid = newSession();
-        const index = track(`leads:${sid}`);
-        const newId = "live-cap-new-1";
-        track(`lead:${sid}:${newId}`);
-        // 25 fake ids seeded in ONE request (they have no lead keys; only the index matters).
-        const seeded = Array.from({ length: LEAD_INDEX_MAX + 5 }, (_, i) => `live-seed-${String(i + 1).padStart(2, "0")}`);
-        expect(await kv.command(["RPUSH", index, ...seeded])).toBe(seeded.length);
-
-        // ONE add: its transaction pushes the new id and runs LTRIM -20 -1.
-        await createKvLeadStore(kv).add(sid, {
-          id: newId,
-          createdAt: new Date(Date.UTC(2026, 0, 1)).toISOString(),
-          email: "cap@example.com",
-          category: "other",
-        });
-
-        const [len, last, first] = (await kv.pipeline([
-          ["LLEN", index],
-          ["LRANGE", index, "-1", "-1"],
-          ["LRANGE", index, "0", "0"],
-        ])) as [number, string[], string[]];
-        expect(len).toBe(LEAD_INDEX_MAX);
-        expect(last).toEqual([newId]);
-        // 26 ids pushed, the last 20 kept: seeds 1..6 are gone, seed 7 is the oldest left.
-        expect(first).toEqual(["live-seed-07"]);
       }));
   });
 }

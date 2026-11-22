@@ -1,16 +1,5 @@
 // Shared helpers for the e2e specs. Selectors come only from UI-CONTRACT.md.
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
-
-export const LEAD_LIMIT_MESSAGE = "You have reached the request limit for this demo. Please try again tomorrow.";
-export const LEAD_NOTICE = "This is a demo. Please use a fake email. Data is deleted after 24 hours.";
-
-let counter = 0;
-
-/** A fake, unique address (test data is dummy: example.com never delivers). */
-export function fakeEmail(): string {
-  counter += 1;
-  return `qa-auto-${Date.now().toString(36)}-${counter}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-}
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Waits until React has hydrated the element behind a test id, without any fixed sleep. A click or a native
@@ -60,24 +49,14 @@ export async function ask(page: Page, text: string, turn: number) {
   return bubble;
 }
 
-/** Fills and submits the lead form on the current page (/contact). Returns the email used. */
-export async function fillAndSubmitLead(
-  page: Page,
-  values: { email?: string; name?: string; note?: string } = {},
-): Promise<string> {
-  // Never fill or submit before React owns the form: a native submit would reload the page.
-  await waitForHydration(page, "lead-submit");
-  const email = values.email ?? fakeEmail();
-  await page.getByTestId("lead-email").fill(email);
-  if (values.name !== undefined) await page.getByTestId("lead-name").fill(values.name);
-  if (values.note !== undefined) await page.getByTestId("lead-note").fill(values.note);
-  await page.getByTestId("lead-submit").click();
-  return email;
-}
-
-/** A second, fully isolated browser context (own cookies, so own server session). */
-export async function isolatedContext(browser: Browser, baseURL: string | undefined): Promise<BrowserContext> {
-  return browser.newContext({ baseURL });
+/** Same idea as waitForHydration, for a locator without a test id (the appointment form has none). */
+export async function waitForHydrated(locator: Locator): Promise<void> {
+  await expect
+    .poll(() => locator.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps$"))), {
+      message: "React has not hydrated the element",
+      timeout: 15_000,
+    })
+    .toBe(true);
 }
 
 export async function horizontalScroll(page: Page): Promise<{ scrollWidth: number; clientWidth: number }> {

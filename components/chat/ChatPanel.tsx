@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { setChatHistory } from "@/lib/leads/chatHistory";
 import {
   MAX_INPUT_LENGTH,
   applyFailure,
@@ -13,7 +12,6 @@ import {
   shouldRefocus,
   showsContactHint,
   sourceLabel,
-  storeHistory,
   type ChatMessage,
 } from "./helpers";
 
@@ -85,12 +83,6 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
       abortRef.current?.abort();
     };
   }, []);
-
-  // Mirror the real conversation into the in-memory store the lead form reads.
-  // Runs on mount too, so a freshly mounted panel (greeting only) empties the store.
-  useEffect(() => {
-    setChatHistory(storeHistory(messages));
-  }, [messages]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -278,7 +270,7 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
                   data-testid="chat-contact-hint"
                   className="mt-3 rounded-control bg-sand px-3 py-2 text-[0.9375rem] text-ink"
                 >
-                  Prefer to talk to the team?{" "}
+                  Looking for the appointment form?{" "}
                   <Link
                     href="/contact#form-heading"
                     data-testid="chat-contact-link"
@@ -288,7 +280,7 @@ export default function ChatPanel({ open, onClose, onNavigate }: Props) {
                     }}
                     className="inline-flex min-h-11 items-center font-semibold text-brand-strong underline underline-offset-2 hover:text-ink"
                   >
-                    Leave your contact details.
+                    Open the demo form.
                   </Link>
                 </p>
               ) : null}

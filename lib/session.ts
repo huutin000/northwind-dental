@@ -7,7 +7,7 @@
 // A missing, malformed or wrongly signed cookie simply counts as "no session".
 //
 // This is an anonymous session, not a login: it only lets the server count
-// messages and (later) find a visitor's own leads.
+// messages.
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
