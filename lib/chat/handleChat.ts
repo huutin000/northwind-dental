@@ -80,7 +80,7 @@ function truncate(text: string, max: number): string {
 // Control characters except \t (U+0009) and \n (U+000A), plus invisible and bidi format characters
 // (zero-width, direction marks, line/paragraph separators, embeddings, isolates, BOM).
 const STRIP_CHARS =
-  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
 // Reply parts that must never leave the server: a Groq-style key or one of our secret names.
 const SECRET_IN_REPLY = /gsk_[A-Za-z0-9]{10,}|GROQ_API_KEY|SESSION_SECRET|UPSTASH|KV_REST_API/i;
 

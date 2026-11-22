@@ -82,6 +82,22 @@ describe("AC-4: sanitizeReply", () => {
     expect(sanitizeReply("KV_REST⁦_API⁩")).toBeNull();
   });
 
+  it.each([
+    ["U+2060", "\u2060"],
+    ["U+2061", "\u2061"],
+    ["U+2062", "\u2062"],
+    ["U+2063", "\u2063"],
+    ["U+2064", "\u2064"],
+  ])(
+    "AC-4: %s hidden inside a secret name or key -> null, and stripped from a normal reply",
+    (_name, invisible) => {
+      expect(sanitizeReply(`GROQ_${invisible}API_KEY`)).toBeNull();
+      expect(sanitizeReply(`gsk_${invisible}abcdefghijkl`)).toBeNull();
+      // the same character in a normal reply is stripped, not kept
+      expect(sanitizeReply(`We${invisible} open at 8.`)).toBe("We open at 8.");
+    },
+  );
+
   it.each(["groq_api_key", "Session_Secret", "upstash", "kv_rest_api_url"])(
     "AC-4: lowercase or mixed-case env name %s -> null",
     (name) => {
