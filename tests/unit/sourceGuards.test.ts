@@ -23,6 +23,31 @@ describe("source guards", () => {
     expect(hits).toEqual([]);
   });
 
+  it("AC-4: components/chat/** and ChatWidget have no raw HTML injection (innerHTML, outerHTML, insertAdjacentHTML, document.write)", () => {
+    const files = [...sourceFiles(join(root, "components", "chat")), join(root, "components", "ChatWidget.tsx")];
+    expect(files.length).toBeGreaterThan(1);
+    const bad = ["dangerously" + "SetInnerHTML", "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      for (const word of bad) expect(src.includes(word), `${f} uses ${word}`).toBe(false);
+    }
+  });
+
+  it("AC-4: no NEXT_PUBLIC_ variable name contains KEY or GROQ anywhere in the source", () => {
+    const files = [
+      ...["app", "components", "lib"].flatMap((d) => sourceFiles(join(root, d))),
+      join(root, "next.config.ts"),
+    ];
+    const hits: string[] = [];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/NEXT_PUBLIC_[A-Za-z0-9_]*/g)) {
+        if (/KEY|GROQ/i.test(m[0])) hits.push(`${f}: ${m[0]}`);
+      }
+    }
+    expect(hits).toEqual([]);
+  });
+
   it("LeadForm never logs (no console.* call: it holds contact details)", () => {
     const src = readFileSync(join(root, "components", "LeadForm.tsx"), "utf8");
     expect(src).not.toMatch(/console\s*\./);

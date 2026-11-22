@@ -33,12 +33,17 @@ describe("POST /api/chat with the key-value rate limiter", () => {
     vi.stubGlobal("fetch", fake.fetch);
     const res = await POST(post());
     expect(res.status).toBe(200);
-    expect(fake.requests).toHaveLength(1);
-    expect(fake.requests[0].path).toBe("/multi-exec");
-    const body = fake.requests[0].body as string[][];
-    expect(body[0].slice(0, 2)).toEqual(["SET", expect.stringMatching(/^chat:[0-9a-f]{32}$/)]);
-    expect(body[0].slice(2)).toEqual(["0", "EX", "600", "NX"]);
-    expect(body.map((c) => c[0])).toEqual(["SET", "INCR", "TTL"]);
+    // Two counters per message: the hashed-IP key first (no IP header here -> chatip:unknown), then the session key.
+    expect(fake.requests).toHaveLength(2);
+    for (const r of fake.requests) {
+      expect(r.path).toBe("/multi-exec");
+      expect((r.body as string[][]).map((c) => c[0])).toEqual(["SET", "INCR", "TTL"]);
+    }
+    const first = fake.requests[0].body as string[][];
+    expect(first[0]).toEqual(["SET", "chatip:unknown", "0", "EX", "600", "NX"]);
+    const second = fake.requests[1].body as string[][];
+    expect(second[0].slice(0, 2)).toEqual(["SET", expect.stringMatching(/^chat:[0-9a-f]{32}$/)]);
+    expect(second[0].slice(2)).toEqual(["0", "EX", "600", "NX"]);
   });
 
   it("the 21st message of a session is denied (429) using the KV counter", async () => {

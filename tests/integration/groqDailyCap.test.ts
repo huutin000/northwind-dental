@@ -51,7 +51,7 @@ async function modules() {
   const { checkRateLimit, createMemoryCounterStore } = await import("@/lib/guard/rateLimit");
   const leadCounter = createMemoryCounterStore();
   const chat = async () => {
-    const r = await handleChat({ message: HOURS_Q, history: [], sessionId: sid() }, { provider: getProvider() });
+    const r = await handleChat({ message: HOURS_Q, history: [], sessionId: sid(), ipKey: sid() }, { provider: getProvider() });
     if (r.status !== 200) throw new Error(`expected 200, got ${r.status}`);
     return r.body;
   };

@@ -1,15 +1,18 @@
 // Chat orchestration. Order (spec section 5):
-//   1. validate the message, then rate limit
+//   1. validate the message (empty, > 500 chars, NUL -> 400, no slot used), then rate limit:
+//      hashed IP (chatip:<hash>, 60/10 min, checked first) AND session (chat:<id>, 20/10 min); both must allow
 //   2. redact PII in the message and in every history item
-//   3. clean the history (never trust the client)
+//   3. clean the history (never trust the client: only role "user" items are kept)
 //   4. retrieve FAQ entries
 //   5. no FAQ entry matches at all -> fixed out-of-scope reply, no AI call
 //   6. AI reply (ANY match reaches the model; its system prompt refuses off-topic questions)
-//   7. no provider, provider failure or empty reply (the FALLBACK paths) -> the best FAQ
+//      the reply goes through sanitizeReply (control chars stripped, 1200 char cap; a reply that
+//      copies the system prompt or contains a secret-like string counts as a failure)
+//   7. no provider, provider failure, unsafe or empty reply (the FALLBACK paths) -> the best FAQ
 //      answer verbatim, but only for a confident match (score >= OUT_OF_SCOPE_THRESHOLD);
 //      a weak match gets the out-of-scope reply instead of a probably wrong answer
-// LOGGING: the only log is ONE console.warn when the provider fails (kind and
-// fixed message only). Never message text, history, FAQ text, error text or stack.
+// LOGGING: the only log is ONE console.warn when the provider fails or its reply is unsafe (kind and
+// fixed message only; never an IP). Never message text, history, FAQ text, error text or stack.
 
 import { ProviderError, type ChatMessage, type ChatProvider } from "@/lib/ai/provider";
 import { FAQ_GROUPS } from "@/lib/faq/data";
@@ -30,6 +33,9 @@ export const MAX_HISTORY_CHARS = 500;
 export const MAX_TOKENS = 300;
 export const TIMEOUT_MS = 8000;
 export const RATE_LIMIT = { limit: 20, windowSeconds: 600 };
+export const IP_RATE_LIMIT = { limit: 60, windowSeconds: 600 };
+const MAX_REPLY_CHARS = 1200;
+const PROMPT_COPY_CHARS = 120;
 const FAQ_ENTRIES_FOR_AI = 3;
 
 /** Fixed instructions. Customer text is never added to this string. */
@@ -64,8 +70,45 @@ function truncate(text: string, max: number): string {
   return text.slice(0, max).replace(/[\uD800-\uDBFF]$/, "");
 }
 
+// Control characters except \t (U+0009) and \n (U+000A), plus invisible and bidi format characters
+// (zero-width, direction marks, line/paragraph separators, embeddings, isolates, BOM).
+const STRIP_CHARS =
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+// Reply parts that must never leave the server: a Groq-style key or one of our secret names.
+const SECRET_IN_REPLY = /gsk_[A-Za-z0-9]{10,}|GROQ_API_KEY|SESSION_SECRET|UPSTASH|KV_REST_API/i;
+
+const normalizeForCompare = (s: string) => s.replace(/\s+/g, " ").toLowerCase();
+const NORMALIZED_PROMPT = normalizeForCompare(SYSTEM_PROMPT);
+
+// shortcut: the prompt is public in the repo, so this is only a low-value tripwire against a verbatim
+// dump, not a secret guard; it needs a long run so that legitimate refusals that reuse the prompt's
+// own short phrases pass. Upgrade only if the prompt ever holds something private.
+function copiesSystemPrompt(text: string): boolean {
+  const t = normalizeForCompare(text);
+  for (let i = 0; i + PROMPT_COPY_CHARS <= t.length; i++) {
+    if (NORMALIZED_PROMPT.includes(t.slice(i, i + PROMPT_COPY_CHARS))) return true;
+  }
+  return false;
+}
+
 /**
- * Keep the last N items with role "user" or "assistant" and string content.
+ * Check the model's reply. Returns the cleaned text ("" when nothing is left), or null when the
+ * reply is unsafe (leaks the system prompt or looks like a secret). No HTML escaping here:
+ * the client renders the reply as text.
+ */
+export function sanitizeReply(raw: string): string | null {
+  // Strip first so a secret hidden behind invisible characters is still caught.
+  const stripped = raw.replace(STRIP_CHARS, "").trim();
+  if (SECRET_IN_REPLY.test(stripped)) return null;
+  // Compare only the capped text that would be sent (bounds the O(n*m) scan).
+  const capped = truncate(stripped, MAX_REPLY_CHARS).trim();
+  if (copiesSystemPrompt(capped)) return null;
+  return capped;
+}
+
+/**
+ * Keep the last N items with role "user" and string content. Items with any other role
+ * (especially a forged "assistant" turn) are dropped: the client is not trusted to speak for the model.
  * Redact first, truncate second: cutting first could split an email in half
  * and let the start of it slip past the redaction.
  */
@@ -75,7 +118,7 @@ function cleanHistory(raw: unknown): ChatMessage[] {
   for (const item of raw) {
     if (!isPlainObject(item)) continue;
     const { role, content } = item;
-    if ((role === "user" || role === "assistant") && typeof content === "string") {
+    if (role === "user" && typeof content === "string") {
       valid.push({ role, content });
     }
   }
@@ -85,7 +128,7 @@ function cleanHistory(raw: unknown): ChatMessage[] {
 }
 
 export async function handleChat(
-  input: { message: unknown; history: unknown; sessionId: string },
+  input: { message: unknown; history: unknown; sessionId: string; ipKey: string },
   deps: {
     provider: ChatProvider | null;
     limiter?: typeof checkRateLimit;
@@ -103,7 +146,16 @@ export async function handleChat(
   if (message.length > MAX_MESSAGE_CHARS) {
     return { status: 400, body: { error: `Please keep your message under ${MAX_MESSAGE_CHARS} characters.` } };
   }
+  if (message.includes("\u0000")) {
+    return { status: 400, body: { error: "Invalid request." } };
+  }
+  // Two limits, both must allow: per session cookie (a client can drop it) and per hashed IP.
+  // The IP limit is checked first: a denied IP never creates a session counter key.
   const limiter = deps.limiter ?? checkRateLimit;
+  const ipLimit = await limiter(`chatip:${input.ipKey}`, IP_RATE_LIMIT);
+  if (!ipLimit.allowed) {
+    return { status: 429, body: { error: RATE_LIMITED_ERROR } };
+  }
   const limit = await limiter(`chat:${input.sessionId}`, deps.rateLimit ?? RATE_LIMIT);
   if (!limit.allowed) {
     return { status: 429, body: { error: RATE_LIMITED_ERROR } };
@@ -143,9 +195,14 @@ export async function handleChat(
       maxTokens: MAX_TOKENS,
       timeoutMs: TIMEOUT_MS,
     });
-    const text = typeof reply === "string" ? reply.trim() : "";
-    if (text) return { status: 200, body: { reply: text, source: "ai" } };
-    failure = "empty reply";
+    const text = typeof reply === "string" ? sanitizeReply(reply) : "";
+    if (text === null) {
+      failure = "unsafe reply";
+    } else if (text) {
+      return { status: 200, body: { reply: text, source: "ai" } };
+    } else {
+      failure = "empty reply";
+    }
   } catch (e) {
     // Only the kind, and the message only when it is a short plain fixed string.
     failure =

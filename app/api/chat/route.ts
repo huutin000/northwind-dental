@@ -1,9 +1,10 @@
 // POST /api/chat: thin layer. Session cookie, body parsing, then handleChat.
 // Nothing is logged: message text must never reach a log.
 
-import { handleChat, RATE_LIMIT } from "@/lib/chat/handleChat";
+import { handleChat, IP_RATE_LIMIT, RATE_LIMIT } from "@/lib/chat/handleChat";
 import { getProvider } from "@/lib/ai";
 import { checkRateLimit } from "@/lib/guard/rateLimit";
+import { getClientKey } from "@/lib/guard/clientIp";
 import { checkJsonPost } from "@/lib/guard/requestGuard";
 import { getCounterStore } from "@/lib/kv/counterStore";
 import { getOrCreateSession } from "@/lib/session";
@@ -47,15 +48,17 @@ export async function POST(req: Request): Promise<Response> {
 
     // Rate-limit counters: shared KV when configured, memory fallback when it is down.
     const result = await handleChat(
-      { message, history, sessionId },
+      { message, history, sessionId, ipKey: getClientKey(req) },
       {
         provider: getProvider(),
         limiter: (key, opts) => checkRateLimit(key, opts, getCounterStore()),
       },
     );
-    // The limiter result is not available here, so Retry-After is the whole window.
+    // The limiter result is not available here, so Retry-After is the longest window.
     const extra: Record<string, string> =
-      result.status === 429 ? { "Retry-After": String(RATE_LIMIT.windowSeconds) } : {};
+      result.status === 429
+        ? { "Retry-After": String(Math.max(RATE_LIMIT.windowSeconds, IP_RATE_LIMIT.windowSeconds)) }
+        : {};
     return respond(result.body, result.status, extra);
   } catch {
     // Unexpected error (for example SESSION_SECRET missing in production). No details.
