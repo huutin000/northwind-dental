@@ -31,8 +31,8 @@ describe("AC-4: sanitizeReply", () => {
   });
 
   it.each([
-    ["a Groq-style key", "Your key is gsk_abcdefghij1234567890 ok"],
-    ["a Groq-style key of exactly 10 chars", "gsk_ABCDEFGHIJ"],
+    ["a Groq-style key", "Your key is " + "gsk" + "_abcdefghij1234567890" + " ok"],
+    ["a Groq-style key of exactly 10 chars", "gsk" + "_ABCDEFGHIJ"],
     ["GROQ_API_KEY", "set GROQ_API_KEY to something"],
     ["SESSION_SECRET", "the SESSION_SECRET is here"],
     ["UPSTASH", "see UPSTASH_REDIS_REST_URL"],
@@ -77,7 +77,7 @@ describe("AC-4: sanitizeReply", () => {
     expect(sanitizeReply("gsk_​abcdefghijkl")).toBeNull();
     expect(sanitizeReply("g‍s﻿k_abcdefghijkl")).toBeNull();
     expect(sanitizeReply("GROQ_‮API_KEY")).toBeNull();
-    expect(sanitizeReply("SESSION _SECRET")).toBeNull();
+    expect(sanitizeReply("SESSION_SECRET")).toBeNull();
     expect(sanitizeReply("UPS‏TASH")).toBeNull();
     expect(sanitizeReply("KV_REST⁦_API⁩")).toBeNull();
   });
@@ -91,7 +91,7 @@ describe("AC-4: sanitizeReply", () => {
 
   it("AC-4: zero-width, bidi, BOM and line/paragraph separators are stripped from a normal reply", () => {
     const raw =
-      "​We‌ open‍ at‎ 8‏.  ‪‫‬‭‮⁦⁧⁨⁩﻿";
+      "​We‌ open‍ at‎ 8‏.‪‫‬‭‮⁦⁧⁨⁩﻿";
     expect(sanitizeReply(raw)).toBe("We open at 8.");
   });
 

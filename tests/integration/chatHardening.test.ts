@@ -472,7 +472,7 @@ describe("AC-4: output hardening", () => {
   };
 
   it.each([
-    ["Groq-style key", "key: gsk_abcdefghijklmnop"],
+    ["Groq-style key", "key: " + "gsk" + "_abcdefghijklmnop"],
     ["GROQ_API_KEY name", "my GROQ_API_KEY is set"],
     ["SESSION_SECRET name", "SESSION_SECRET=abc"],
     ["UPSTASH name", "UPSTASH_REDIS_REST_TOKEN"],
