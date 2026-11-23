@@ -85,6 +85,42 @@ describe("source guards", () => {
     expect(src).not.toMatch(/from\s+["'][^"']*chat/i);
   });
 
+  it("AC-1: components/appointment/** (date and time pickers) have no network, storage, logging, raw HTML or raw hex, and no Intl or locale formatting", () => {
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const files = sourceFiles(join(root, "components", "appointment"));
+    // dateTime.ts, usePopover.ts, DateField.tsx, TimeField.tsx
+    expect(files.length).toBeGreaterThanOrEqual(4);
+    for (const f of files) {
+      const src = strip(readFileSync(f, "utf8"));
+      expect(src.length, f).toBeGreaterThan(100);
+      for (const re of [
+        /\bfetch\s*\(/,
+        /XMLHttpRequest/,
+        /sendBeacon/,
+        /WebSocket/,
+        /EventSource/,
+        /\/api\//,
+        /localStorage/,
+        /sessionStorage/,
+        /document\.cookie/,
+        /indexedDB/,
+        /console\s*\./,
+        /dangerously/i,
+        /innerHTML/,
+        /outerHTML/,
+        /insertAdjacentHTML/,
+        // The whole point of the hand-written pickers: no browser-locale text. These would bring Vietnamese back.
+        /\bIntl\./,
+        /toLocale(Date|Time)?String/,
+        /type=["']date["']/,
+        /type=["']time["']/,
+      ]) {
+        expect(src, `${f}: ${String(re)}`).not.toMatch(re);
+      }
+      expect(src, `${f}: raw hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    }
+  });
+
   it("the /contact page uses design tokens only (no raw hex) and no network call", () => {
     const src = readFileSync(join(root, "app", "(site)", "contact", "page.tsx"), "utf8");
     expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

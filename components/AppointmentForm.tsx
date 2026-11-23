@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { clinic } from "@/components/clinic";
+import DateField from "@/components/appointment/DateField";
+import TimeField from "@/components/appointment/TimeField";
+import { MONTH_NAMES, WEEKDAY_NAMES } from "@/components/appointment/dateTime";
 
 /**
  * Front-end SIMULATION of an appointment request. It sends nothing: no network
@@ -20,22 +23,6 @@ const SERVICES = [
 ] as const;
 
 const SENDING_MS = 1200;
-
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 type Values = { name: string; phone: string; email: string; service: string; date: string; time: string; notes: string };
 type ErrorKey = "name" | "phone" | "email" | "service" | "when";
@@ -66,8 +53,8 @@ function validate(v: Values): Errors {
 function formatPreferred(date: string, time: string): string {
   const [y, m, d] = date.split("-").map(Number);
   if (!y || !m || !d) return `${date}, ${time}`;
-  const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-  return `${weekday} ${d} ${MONTHS[m - 1]}, ${time}`;
+  const weekday = WEEKDAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${weekday} ${d} ${MONTH_NAMES[m - 1]}, ${time}`;
 }
 
 const inputBase =
@@ -75,6 +62,15 @@ const inputBase =
 const labelClass = "block text-[0.9375rem] font-semibold text-ink";
 const hintClass = "font-normal text-muted";
 const legendClass = "mb-4 w-full border-b border-line pb-3 font-heading text-2xl text-ink";
+
+/** Visible asterisk for required fields; hidden from assistive tech so the control's name is unchanged (the input has `required`). */
+function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="ml-1 text-error-ink">
+      *
+    </span>
+  );
+}
 
 function ErrorIcon() {
   return (
@@ -152,8 +148,7 @@ export default function AppointmentForm() {
   }
 
   function onWhenChange(key: "date" | "time") {
-    return (e: ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
+    return (value: string) => {
       const other = key === "date" ? values.time : values.date;
       setValues((prev) => ({ ...prev, [key]: value }));
       if (value !== "" && other !== "") {
@@ -259,15 +254,22 @@ export default function AppointmentForm() {
         </div>
       ) : null}
 
+      <p className="text-[0.9375rem] text-muted">
+        Fields marked <span aria-hidden="true">*</span>
+        <span className="sr-only">with an asterisk</span> are required.
+      </p>
+
       <fieldset disabled={busy} className="m-0 grid min-w-0 gap-5 border-0 p-0">
         <legend className={legendClass}>About you</legend>
         <div>
           <label htmlFor="appt-name" className={labelClass}>
             Full name
+            <RequiredMark />
           </label>
           <input
             id="appt-name"
             type="text"
+            required
             autoComplete="name"
             value={values.name}
             onChange={setField("name", "name")}
@@ -281,10 +283,12 @@ export default function AppointmentForm() {
           <div className="min-w-0">
             <label htmlFor="appt-phone" className={labelClass}>
               Phone
+              <RequiredMark />
             </label>
             <input
               id="appt-phone"
               type="tel"
+              required
               autoComplete="tel"
               value={values.phone}
               onChange={setField("phone", "phone")}
@@ -297,10 +301,12 @@ export default function AppointmentForm() {
           <div className="min-w-0">
             <label htmlFor="appt-email" className={labelClass}>
               Email
+              <RequiredMark />
             </label>
             <input
               id="appt-email"
               type="email"
+              required
               autoComplete="email"
               value={values.email}
               onChange={setField("email", "email")}
@@ -318,9 +324,11 @@ export default function AppointmentForm() {
         <div>
           <label htmlFor="appt-service" className={labelClass}>
             Service
+            <RequiredMark />
           </label>
           <select
             id="appt-service"
+            required
             value={values.service}
             onChange={setField("service", "service")}
             aria-invalid={invalid("service")}
@@ -341,32 +349,29 @@ export default function AppointmentForm() {
             <div className="min-w-0">
               <label htmlFor="appt-date" className={labelClass}>
                 Preferred date
+                <RequiredMark />
               </label>
-              <input
+              <DateField
                 id="appt-date"
-                type="date"
                 value={values.date}
                 onChange={onWhenChange("date")}
-                aria-invalid={whenFlag.date ? true : undefined}
-                aria-describedby={whenFlag.date ? "appt-when-error" : undefined}
-                className={`${inputBase} mt-2 ${whenFlag.date ? "border-2 border-error-ink" : "border-[1.5px] border-edge"}`}
+                invalid={whenFlag.date}
+                describedBy={whenFlag.date ? "appt-when-error" : undefined}
+                inputClassName={`${inputBase} ${whenFlag.date ? "border-2 border-error-ink" : "border-[1.5px] border-edge"}`}
               />
             </div>
             <div className="min-w-0">
-              {/* min/max below are a literal copy of the hours in components/clinic.ts: a picker hint, nothing is enforced. */}
               <label htmlFor="appt-time" className={labelClass}>
                 Preferred time <span className={hintClass}>(open {clinic.hours[0].time})</span>
+                <RequiredMark />
               </label>
-              <input
+              <TimeField
                 id="appt-time"
-                type="time"
-                min="09:00"
-                max="17:00"
                 value={values.time}
                 onChange={onWhenChange("time")}
-                aria-invalid={whenFlag.time ? true : undefined}
-                aria-describedby={whenFlag.time ? "appt-when-error" : undefined}
-                className={`${inputBase} mt-2 ${whenFlag.time ? "border-2 border-error-ink" : "border-[1.5px] border-edge"}`}
+                invalid={whenFlag.time}
+                describedBy={whenFlag.time ? "appt-when-error" : undefined}
+                inputClassName={`${inputBase} ${whenFlag.time ? "border-2 border-error-ink" : "border-[1.5px] border-edge"}`}
               />
             </div>
           </div>

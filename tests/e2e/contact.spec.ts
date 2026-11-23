@@ -676,3 +676,842 @@ test.describe("AC-7 target size and overflow", () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Date and time pickers (components/appointment/*) and required marks. Roles, labels and visible text only.
+// "Today" is pinned with page.clock.setFixedTime (Dec 1 2026, 12:00 UTC, in a UTC browser), which changes Date only:
+// no timer is faked, so nothing here depends on machine speed and there is no fixed sleep.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const calendarButton = (p: Page) => p.getByRole("button", { name: "Open calendar" });
+const calendarDialog = (p: Page) => p.getByRole("dialog", { name: "Calendar" });
+const timePickerButton = (p: Page) => p.getByRole("button", { name: "Open time picker" });
+const timeDialog = (p: Page) => p.getByRole("dialog", { name: "Time picker" });
+const dayButton = (p: Page, label: string) => calendarDialog(p).getByRole("button", { name: label, exact: true });
+const hourButton = (p: Page, hh: string) => timeDialog(p).getByRole("button", { name: `Hour ${hh}`, exact: true });
+const minuteButton = (p: Page, mm: string) => timeDialog(p).getByRole("button", { name: `Minute ${mm}`, exact: true });
+
+const FIXED_NOW = new Date(Date.UTC(2026, 11, 1, 12, 0, 0));
+
+async function openPinned(page: Page) {
+  await page.clock.setFixedTime(FIXED_NOW);
+  await open(page);
+}
+
+/** Fills everything except date and time, so a test can set those two through the pickers. */
+async function fillWithoutWhen(page: Page) {
+  await fill(page, { date: "", time: "" });
+}
+
+test.describe("Pickers: date popover", () => {
+  test.use({ timezoneId: "UTC" });
+
+  test("AC-2a: opens from 'Open calendar' with an English month title and weekday headers; picking a day writes 'Dec 3, 2026'; the recap still reads 'Thursday 3 December, 10:30'", async ({
+    page,
+  }) => {
+    const w = watch(page);
+    await openPinned(page);
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(calendarButton(page)).toHaveAttribute("aria-expanded", "false");
+
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeVisible();
+    await expect(calendarButton(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(calendarDialog(page).getByText("December 2026", { exact: true })).toBeVisible();
+    for (const h of ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]) {
+      await expect(calendarDialog(page).getByText(h, { exact: true })).toHaveCount(1);
+    }
+    // Sunday first: Su is the first header.
+    await expect(calendarDialog(page).locator("[aria-hidden='true'] > span")).toHaveText(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]);
+    await expect(calendarDialog(page).getByRole("button", { name: "Previous month" })).toBeVisible();
+    await expect(calendarDialog(page).getByRole("button", { name: "Next month" })).toBeVisible();
+    // With no value the calendar opens on today, which is marked with aria-current and holds the focus.
+    await expect(dayButton(page, "Tuesday, December 1, 2026")).toHaveAttribute("aria-current", "date");
+    await expect(dayButton(page, "Tuesday, December 1, 2026")).toBeFocused();
+    await expect(calendarDialog(page).locator("[aria-current='date']")).toHaveCount(1);
+    await expect(calendarDialog(page).locator("[aria-pressed='true']")).toHaveCount(0);
+
+    await dayButton(page, "Thursday, December 3, 2026").click();
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(dateField(page)).toHaveValue("Dec 3, 2026");
+    await expect(calendarButton(page)).toBeFocused();
+
+    // Reopening shows the chosen day as pressed and focused.
+    await calendarButton(page).click();
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toHaveAttribute("aria-pressed", "true");
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toBeFocused();
+    await expect(calendarDialog(page).locator("[aria-pressed='true']")).toHaveCount(1);
+    // The toggle button closes it again.
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeHidden();
+
+    // Finish through the time popover and submit: the recap keeps its own English format.
+    await nameField(page).fill("Sam Lee");
+    await phoneField(page).fill("555 0100 123");
+    await emailField(page).fill("sam@example.com");
+    await serviceField(page).selectOption("Cleaning");
+    await timePickerButton(page).click();
+    await hourButton(page, "10").click();
+    await minuteButton(page, "30").click();
+    await expect(timeField(page)).toHaveValue("10:30");
+    await sendButton(page).click();
+    await expect(successPanel(page).locator("dd")).toHaveText(["Sam Lee", "Cleaning", "Thursday 3 December, 10:30", "sam@example.com"]);
+    expect(w.api).toEqual([]);
+    expect(w.out).toEqual([]);
+  });
+
+  test("AC-2a: the popover opens on the month of the typed date and typing a valid date clears the date error", async ({ page }) => {
+    await openPinned(page);
+    await fillWithoutWhen(page);
+    await timeField(page).fill("10:30");
+    await sendButton(page).click();
+    await expect(dateField(page)).toHaveAttribute("aria-invalid", "true");
+
+    await dateField(page).fill("Mar 9, 2027");
+    await expect(dateField(page)).not.toHaveAttribute("aria-invalid", "true");
+    await calendarButton(page).click();
+    await expect(calendarDialog(page).getByText("March 2027", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Tuesday, March 9, 2027")).toBeFocused();
+  });
+
+  test("F1: the calendar trigger keeps its name and gets a description only when a date exists (pick, typed, junk, reset)", async ({
+    page,
+  }) => {
+    await openPinned(page);
+    await expect(calendarButton(page)).toHaveAccessibleName("Open calendar");
+    await expect(calendarButton(page)).toHaveAccessibleDescription("");
+    await expect(calendarButton(page)).not.toHaveAttribute("aria-describedby", /.+/);
+
+    await calendarButton(page).click();
+    await dayButton(page, "Thursday, December 3, 2026").click();
+    await expect(calendarButton(page)).toBeFocused();
+    await expect(calendarButton(page)).toHaveAccessibleDescription("Selected date: Thursday, December 3, 2026");
+    await expect(calendarButton(page)).toHaveAccessibleName("Open calendar");
+
+    await dateField(page).fill("dec 4 2026");
+    await expect(calendarButton(page)).toHaveAccessibleDescription("Selected date: Friday, December 4, 2026");
+    await dateField(page).fill("Feb 30, 2026");
+    await expect(calendarButton(page)).toHaveAccessibleDescription("");
+    await expect(calendarButton(page)).not.toHaveAttribute("aria-describedby", /.+/);
+
+    await fill(page);
+    await sendButton(page).click();
+    await expect(receivedHeading(page)).toBeVisible();
+    await page.getByRole("button", { name: "Make another request" }).click();
+    await expect(calendarButton(page)).toHaveAccessibleDescription("");
+  });
+
+  test("F2: today is marked with aria-current and a dot child (no ring); the dot is brand on a plain cell and canvas on the selected cell", async ({
+    page,
+  }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    const today = dayButton(page, "Tuesday, December 1, 2026");
+    await expect(calendarDialog(page).locator("[aria-current='date']")).toHaveCount(1);
+    await expect(today).toHaveAttribute("aria-current", "date");
+    const dot = today.locator("span[aria-hidden='true']");
+    await expect(dot).toHaveCount(1);
+    await expect(calendarDialog(page).locator("button span[aria-hidden='true']")).toHaveCount(1);
+    const rgb = (l: Locator) => l.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await rgb(dot), "unselected today: brand dot").toBe("rgb(3, 105, 161)");
+    const dotBox = (await dot.boundingBox())!;
+    const cellBox = (await today.boundingBox())!;
+    expect(dotBox.width).toBeCloseTo(4, 0);
+    expect(dotBox.y + dotBox.height, "dot sits inside the cell").toBeLessThanOrEqual(cellBox.y + cellBox.height);
+    expect(dotBox.y, "dot is in the lower half of the cell").toBeGreaterThan(cellBox.y + cellBox.height / 2);
+    await page.keyboard.press("ArrowRight");
+    expect(await today.evaluate((el) => getComputedStyle(el).boxShadow), "no ring box-shadow").toBe("none");
+    expect(await today.evaluate((el) => parseFloat(getComputedStyle(el).fontWeight)), "today is semibold").toBeGreaterThanOrEqual(600);
+
+    await today.click();
+    await calendarButton(page).click();
+    const dot2 = today.locator("span[aria-hidden='true']");
+    await expect(today).toHaveAttribute("aria-pressed", "true");
+    expect(await rgb(dot2), "selected today: canvas dot").toBe("rgb(251, 248, 242)");
+    expect(await rgb(today), "selected cell fill").toBe("rgb(3, 105, 161)");
+
+    await calendarDialog(page).getByRole("button", { name: "Next month" }).click();
+    await expect(calendarDialog(page).locator("[aria-current='date']")).toHaveCount(0);
+    await expect(calendarDialog(page).locator("button span[aria-hidden='true']")).toHaveCount(0);
+  });
+
+  test("AC-2c: Escape closes the date popover and returns focus to 'Open calendar'", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(calendarButton(page)).toBeFocused();
+    await expect(calendarButton(page)).toHaveAttribute("aria-expanded", "false");
+    // Escape with the popover closed does nothing harmful: the page and the form are still there.
+    await page.keyboard.press("Escape");
+    await expect(calendarButton(page)).toBeFocused();
+    await expect(sendButton(page)).toBeVisible();
+  });
+
+  test("AC-2c: arrow keys move the day focus, PageDown/PageUp change the month, Enter picks", async ({ page }) => {
+    await openPinned(page);
+    await dateField(page).fill("2026-12-03");
+    await calendarButton(page).click();
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toBeFocused();
+
+    await page.keyboard.press("ArrowRight");
+    await expect(dayButton(page, "Friday, December 4, 2026")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(dayButton(page, "Thursday, December 10, 2026")).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toBeFocused();
+
+    await page.keyboard.press("PageDown");
+    await expect(calendarDialog(page).getByText("January 2027", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Sunday, January 3, 2027")).toBeFocused();
+    await page.keyboard.press("PageUp");
+    await expect(calendarDialog(page).getByText("December 2026", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Thursday, December 3, 2026")).toBeFocused();
+
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(dateField(page)).toHaveValue("Dec 4, 2026");
+    await expect(calendarButton(page)).toBeFocused();
+  });
+
+  test("AC-2c: arrow keys cross a month edge and PageDown from Jan 31 clamps to Feb 28", async ({ page }) => {
+    await openPinned(page);
+    await dateField(page).fill("2026-12-01");
+    await calendarButton(page).click();
+    await page.keyboard.press("ArrowLeft");
+    await expect(calendarDialog(page).getByText("November 2026", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Monday, November 30, 2026")).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(calendarDialog(page)).toBeHidden();
+    await dateField(page).fill("2027-01-31");
+    await calendarButton(page).click();
+    await page.keyboard.press("PageDown");
+    await expect(calendarDialog(page).getByText("February 2027", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Sunday, February 28, 2027")).toBeFocused();
+  });
+
+  test("AC-2d: while the popover is open, typing a valid date moves the grid to that month and marks the day", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await dayButton(page, "Thursday, December 3, 2026").click();
+    await expect(dateField(page)).toHaveValue("Dec 3, 2026");
+    await calendarButton(page).click();
+    await expect(calendarDialog(page).getByText("December 2026", { exact: true })).toBeVisible();
+    await dateField(page).fill("Mar 9, 2027");
+    await expect(calendarDialog(page)).toBeVisible();
+    await expect(calendarDialog(page).getByText("March 2027", { exact: true })).toBeVisible();
+    await expect(dayButton(page, "Tuesday, March 9, 2027")).toHaveAttribute("aria-pressed", "true");
+    await expect(calendarDialog(page).locator("[aria-pressed='true']")).toHaveCount(1);
+    // Text that does not parse leaves the grid where it is.
+    await dateField(page).fill("Mar 9, 20");
+    await expect(calendarDialog(page).getByText("March 2027", { exact: true })).toBeVisible();
+  });
+
+  test("AC-2c: Escape during IME composition does not close either popover (isComposing and keyCode 229); a plain Escape does", async ({
+    page,
+  }) => {
+    await openPinned(page);
+    const press = (loc: Locator, init: { isComposing?: boolean; keyCode?: number }) =>
+      loc.evaluate((el, i) => {
+        const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true, ...i });
+        el.dispatchEvent(ev);
+      }, init);
+
+    await calendarButton(page).click();
+    const day = dayButton(page, "Tuesday, December 1, 2026");
+    await expect(day).toBeFocused();
+    await press(day, { isComposing: true });
+    await press(day, { keyCode: 229 });
+    await expect(calendarDialog(page)).toBeVisible();
+    await press(day, {});
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(calendarButton(page)).toBeFocused();
+
+    await timePickerButton(page).click();
+    const hour = hourButton(page, "09");
+    await expect(hour).toBeFocused();
+    await press(hour, { isComposing: true });
+    await press(hour, { keyCode: 229 });
+    await expect(timeDialog(page)).toBeVisible();
+    await press(hour, {});
+    await expect(timeDialog(page)).toBeHidden();
+    await expect(timePickerButton(page)).toBeFocused();
+  });
+
+  test("AC-2c: Previous/Next month buttons change the month title; 42 labelled days are always shown", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await calendarDialog(page).getByRole("button", { name: "Next month" }).click();
+    await expect(calendarDialog(page).getByText("January 2027", { exact: true })).toBeVisible();
+    await calendarDialog(page).getByRole("button", { name: "Previous month" }).click();
+    await calendarDialog(page).getByRole("button", { name: "Previous month" }).click();
+    await expect(calendarDialog(page).getByText("November 2026", { exact: true })).toBeVisible();
+    await expect(calendarDialog(page).getByRole("button", { name: /^\w+, \w+ \d+, \d{4}$/ })).toHaveCount(42);
+  });
+
+  test("AC-2c: a pointer press outside the picker closes it", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeVisible();
+    await nameField(page).click();
+    await expect(calendarDialog(page)).toBeHidden();
+    await expect(nameField(page)).toBeFocused();
+  });
+
+  test("AC-2c: Tab within the picker keeps it open; focus moving to another field closes it", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeVisible();
+    await dateField(page).focus();
+    await page.keyboard.press("Tab"); // to 'Open calendar' (same wrapper: stays open)
+    await expect(calendarButton(page)).toBeFocused();
+    await expect(calendarDialog(page)).toBeVisible();
+    await timeField(page).focus();
+    await expect(calendarDialog(page)).toBeHidden();
+  });
+
+  test("AC-2d: typed 'dec 3 2026' is normalised to 'Dec 3, 2026' on blur; other accepted formats too", async ({ page }) => {
+    await openPinned(page);
+    const cases: [string, string][] = [
+      ["dec 3 2026", "Dec 3, 2026"],
+      ["December 3, 2026", "Dec 3, 2026"],
+      ["DEC 03, 2026", "Dec 3, 2026"],
+      ["2026-12-03", "Dec 3, 2026"],
+      ["2026-2-3", "Feb 3, 2026"],
+    ];
+    for (const [typed, shown] of cases) {
+      await dateField(page).fill(typed);
+      await dateField(page).blur();
+      await expect(dateField(page), typed).toHaveValue(shown);
+    }
+  });
+
+  test("AC-2d: a normalised typed date and time reach the recap", async ({ page }) => {
+    await openPinned(page);
+    await fillWithoutWhen(page);
+    await dateField(page).fill("dec 3 2026");
+    await dateField(page).blur();
+    await timeField(page).fill("9:05");
+    await timeField(page).blur();
+    await expect(timeField(page)).toHaveValue("09:05");
+    await sendButton(page).click();
+    await expect(successPanel(page).locator("dd").nth(2)).toHaveText("Thursday 3 December, 09:05");
+  });
+
+  const junkDates = ["banana", "Feb 30, 2026", "Feb 29, 2027", "2026-13-01", "Dec 3, 26", "12/03/2026", "Dec 3"];
+  for (const junk of junkDates) {
+    test(`AC-2d: junk date ${JSON.stringify(junk)} stays as typed, is rejected on submit with the shared message and focus`, async ({
+      page,
+    }) => {
+      const w = watch(page);
+      await openPinned(page);
+      await fill(page, { date: "" });
+      await dateField(page).fill(junk);
+      await dateField(page).blur();
+      await expect(dateField(page)).toHaveValue(junk);
+      await sendButton(page).click();
+      await expect(page.getByText(MSG.when)).toHaveCount(1);
+      await expect(dateField(page)).toHaveAttribute("aria-invalid", "true");
+      await expect(dateField(page)).toHaveAttribute("aria-describedby", "appt-when-error");
+      await expect(dateField(page)).toBeFocused();
+      await expect(timeField(page)).not.toHaveAttribute("aria-invalid", "true");
+      await expect(banner(page)).toHaveText(ONE_FIELD);
+      await expect(receivedHeading(page)).toHaveCount(0);
+      expect(w.api).toEqual([]);
+    });
+  }
+
+  test("AC-2d: a date that is typed wrong and then corrected submits", async ({ page }) => {
+    await openPinned(page);
+    await fill(page, { date: "Feb 30, 2026" });
+    await sendButton(page).click();
+    await expect(dateField(page)).toHaveAttribute("aria-invalid", "true");
+    await dateField(page).fill("Feb 27, 2026");
+    await expect(page.getByText(MSG.when)).toHaveCount(0);
+    await sendButton(page).click();
+    await expect(successPanel(page).locator("dd").nth(2)).toHaveText("Friday 27 February, 10:30");
+  });
+
+  test("AC-2d: 'Make another request' empties the date and time text and the popover works again", async ({ page }) => {
+    await openPinned(page);
+    await fill(page);
+    await dateField(page).blur();
+    await sendButton(page).click();
+    await expect(receivedHeading(page)).toBeVisible();
+    await page.getByRole("button", { name: "Make another request" }).click();
+    await expect(dateField(page)).toHaveValue("");
+    await expect(timeField(page)).toHaveValue("");
+    await calendarButton(page).click();
+    await expect(calendarDialog(page).getByText("December 2026", { exact: true })).toBeVisible();
+    await expect(calendarDialog(page).locator("[aria-pressed='true']")).toHaveCount(0);
+  });
+});
+
+test.describe("Pickers: time popover", () => {
+  test.use({ timezoneId: "UTC" });
+
+  test("AC-2b: pick hour 10 then minute 30 writes '10:30'; the hour keeps the popover open, the minute closes it", async ({
+    page,
+  }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await expect(timeDialog(page)).toBeVisible();
+    await expect(timePickerButton(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(hourButton(page, "09")).toBeFocused();
+
+    await hourButton(page, "10").click();
+    await expect(timeDialog(page)).toBeVisible();
+    await expect(timeField(page)).toHaveValue("10:00");
+    await expect(hourButton(page, "10")).toHaveAttribute("aria-pressed", "true");
+    await minuteButton(page, "30").click();
+    await expect(timeDialog(page)).toBeHidden();
+    await expect(timeField(page)).toHaveValue("10:30");
+    await expect(timePickerButton(page)).toBeFocused();
+
+    await timePickerButton(page).click();
+    await expect(hourButton(page, "10")).toBeFocused();
+    await expect(hourButton(page, "10")).toHaveAttribute("aria-pressed", "true");
+    await expect(minuteButton(page, "30")).toHaveAttribute("aria-pressed", "true");
+    await expect(timeDialog(page).locator("[aria-pressed='true']")).toHaveCount(2);
+  });
+
+  test("AC-2b: the hour grid is exactly 09 to 17 and the minutes are 00, 15, 30, 45 (24-hour, no AM/PM)", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    const hours = timeDialog(page).getByRole("button", { name: /^Hour / });
+    await expect(hours).toHaveCount(9);
+    await expect(hours.first()).toHaveText("09");
+    await expect(hours.last()).toHaveText("17");
+    await expect(timeDialog(page).getByRole("button", { name: "Hour 08" })).toHaveCount(0);
+    await expect(timeDialog(page).getByRole("button", { name: "Hour 18" })).toHaveCount(0);
+    await expect(timeDialog(page).getByRole("button", { name: /^Minute / })).toHaveText(["00", "15", "30", "45"]);
+    await expect(timeDialog(page).getByText(/\b(AM|PM)\b/i)).toHaveCount(0);
+  });
+
+  test("AC-2b: with no hour chosen yet the minute buttons are disabled; choosing an hour enables them", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    for (const mm of ["00", "15", "30", "45"]) await expect(minuteButton(page, mm)).toBeDisabled();
+    await hourButton(page, "13").click();
+    for (const mm of ["00", "15", "30", "45"]) await expect(minuteButton(page, mm)).toBeEnabled();
+  });
+
+  test("AC-2b: hour 17 disables minutes 15, 30 and 45 and leaves 00; 16 allows all (boundary)", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await hourButton(page, "16").click();
+    for (const mm of ["00", "15", "30", "45"]) await expect(minuteButton(page, mm)).toBeEnabled();
+    await hourButton(page, "17").click();
+    await expect(minuteButton(page, "00")).toBeEnabled();
+    for (const mm of ["15", "30", "45"]) await expect(minuteButton(page, mm)).toBeDisabled();
+    await expect(timeField(page)).toHaveValue("17:00");
+    await minuteButton(page, "30").dispatchEvent("click");
+    await expect(timeField(page)).toHaveValue("17:00");
+    await expect(timeDialog(page)).toBeVisible();
+    await minuteButton(page, "00").click();
+    await expect(timeDialog(page)).toBeHidden();
+    await expect(timeField(page)).toHaveValue("17:00");
+  });
+
+  test("AC-2b: switching the hour keeps the minute when it is allowed and resets it to 00 for hour 17", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await hourButton(page, "10").click();
+    await minuteButton(page, "45").click();
+    await expect(timeField(page)).toHaveValue("10:45");
+    await timePickerButton(page).click();
+    await hourButton(page, "11").click();
+    await expect(timeField(page)).toHaveValue("11:45");
+    await hourButton(page, "17").click();
+    await expect(timeField(page)).toHaveValue("17:00");
+    await hourButton(page, "09").click();
+    await expect(timeField(page)).toHaveValue("09:00");
+  });
+
+  test("AC-2b: a typed time outside the grid still opens the popover on the first hour", async ({ page }) => {
+    await openPinned(page);
+    await timeField(page).fill("20:15");
+    await timePickerButton(page).click();
+    await expect(hourButton(page, "09")).toBeFocused();
+    await expect(minuteButton(page, "15")).toHaveAttribute("aria-pressed", "true");
+    // Only the closing hour (17) restricts minutes: hour 20 is not 17, so all four stay enabled.
+    for (const mm of ["00", "15", "30", "45"]) await expect(minuteButton(page, mm)).toBeEnabled();
+  });
+
+  test("F1: the time trigger keeps its name and gets a description only when a time exists (pick, typed, junk)", async ({ page }) => {
+    await openPinned(page);
+    await expect(timePickerButton(page)).toHaveAccessibleName("Open time picker");
+    await expect(timePickerButton(page)).toHaveAccessibleDescription("");
+    await expect(timePickerButton(page)).not.toHaveAttribute("aria-describedby", /.+/);
+
+    await timePickerButton(page).click();
+    await hourButton(page, "10").click();
+    await minuteButton(page, "30").click();
+    await expect(timePickerButton(page)).toBeFocused();
+    await expect(timePickerButton(page)).toHaveAccessibleDescription("Selected time: 10:30");
+    await expect(timePickerButton(page)).toHaveAccessibleName("Open time picker");
+
+    await timeField(page).fill("9:05");
+    await expect(timePickerButton(page)).toHaveAccessibleDescription("Selected time: 09:05");
+    await timeField(page).fill("abc");
+    await expect(timePickerButton(page)).toHaveAccessibleDescription("");
+    await expect(timePickerButton(page)).not.toHaveAttribute("aria-describedby", /.+/);
+  });
+
+  test("AC-2c: Escape closes the time popover and returns focus to 'Open time picker'; the picked hour is kept", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await expect(timeDialog(page)).toBeVisible();
+    await hourButton(page, "10").click();
+    await page.keyboard.press("Escape");
+    await expect(timeDialog(page)).toBeHidden();
+    await expect(timePickerButton(page)).toBeFocused();
+    await expect(timePickerButton(page)).toHaveAttribute("aria-expanded", "false");
+    await expect(timeField(page)).toHaveValue("10:00");
+  });
+
+  test("AC-2c: arrow keys, Home and End move through the hours (3 columns) and the minutes", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await expect(hourButton(page, "09")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(hourButton(page, "10")).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(hourButton(page, "13")).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(hourButton(page, "10")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(hourButton(page, "09")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowUp");
+    await expect(hourButton(page, "09")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(hourButton(page, "17")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowDown");
+    await expect(hourButton(page, "17")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(hourButton(page, "09")).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(timeField(page)).toHaveValue("09:00");
+    await expect(timeDialog(page)).toBeVisible();
+    await minuteButton(page, "00").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(minuteButton(page, "15")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(minuteButton(page, "45")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(minuteButton(page, "45")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(minuteButton(page, "00")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await expect(timeDialog(page)).toBeHidden();
+    await expect(timeField(page)).toHaveValue("09:30");
+  });
+
+  test("AC-2c: at hour 17 the minute keys skip the disabled minutes", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await hourButton(page, "17").click();
+    await minuteButton(page, "00").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(minuteButton(page, "00")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(minuteButton(page, "00")).toBeFocused();
+  });
+
+  test("AC-2c: a pointer press outside closes the time popover", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await expect(timeDialog(page)).toBeVisible();
+    await nameField(page).click();
+    await expect(timeDialog(page)).toBeHidden();
+  });
+
+  test("AC-2d: typed '9:30' becomes '09:30' on blur", async ({ page }) => {
+    await openPinned(page);
+    await timeField(page).fill("9:30");
+    await timeField(page).blur();
+    await expect(timeField(page)).toHaveValue("09:30");
+  });
+
+  for (const junk of ["abc", "24:00", "10:60", "10:5", "1030", "10:30 am"]) {
+    test(`AC-2d: junk time ${JSON.stringify(junk)} stays as typed and is rejected on submit`, async ({ page }) => {
+      await openPinned(page);
+      await fill(page, { time: junk });
+      await timeField(page).blur();
+      await expect(timeField(page)).toHaveValue(junk);
+      await sendButton(page).click();
+      await expect(page.getByText(MSG.when)).toHaveCount(1);
+      await expect(timeField(page)).toHaveAttribute("aria-invalid", "true");
+      await expect(timeField(page)).toBeFocused();
+      await expect(dateField(page)).not.toHaveAttribute("aria-invalid", "true");
+      await expect(receivedHeading(page)).toHaveCount(0);
+    });
+  }
+
+  test("AC-2d: a parseable time outside clinic hours (20:15) is accepted, as before (documents current behaviour: no hours rule)", async ({
+    page,
+  }) => {
+    await openPinned(page);
+    await fill(page, { time: "20:15" });
+    await sendButton(page).click();
+    await expect(successPanel(page).locator("dd").nth(2)).toHaveText("Thursday 3 December, 20:15");
+  });
+});
+
+test.describe("Pickers: a Vietnamese browser locale does not leak into the picker (the original bug)", () => {
+  test.use({ locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh" });
+
+  const VIET = /Tháng|Thứ|Chủ nhật|\bT[2-7]\b|\bCN\b|Giờ|Phút|Lịch/;
+
+  /** All text and all accessible names (aria-label) inside a dialog. */
+  async function dialogStrings(dialog: Locator): Promise<string[]> {
+    return dialog.evaluate((el) => {
+      const out = [el.textContent ?? "", el.getAttribute("aria-label") ?? ""];
+      for (const n of el.querySelectorAll("[aria-label]")) out.push(n.getAttribute("aria-label") ?? "");
+      return out;
+    });
+  }
+
+  test("AC-2e: precondition: the browser really runs in vi-VN (its own Intl prints a Vietnamese month)", async ({ page }) => {
+    await openPinned(page);
+    expect(await page.evaluate(() => navigator.language)).toBe("vi-VN");
+    const viMonth = await page.evaluate(() => new Intl.DateTimeFormat(undefined, { month: "long" }).format(new Date(2026, 11, 3)));
+    expect(viMonth, "the locale must produce a Vietnamese month, otherwise the next tests prove nothing").toMatch(/háng/);
+  });
+
+  test("AC-2e: calendar title, weekday headers, day names and the shown date are English under vi-VN", async ({ page }) => {
+    await openPinned(page);
+    await calendarButton(page).click();
+    await expect(calendarDialog(page)).toBeVisible();
+    await expect(calendarDialog(page).getByText("December 2026", { exact: true })).toBeVisible();
+    await expect(calendarDialog(page).locator("[aria-hidden='true'] > span")).toHaveText(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]);
+    for (const s of await dialogStrings(calendarDialog(page))) {
+      expect(s).not.toMatch(VIET);
+      expect(s, "no non-ASCII text in the calendar").toMatch(/^[\x00-\x7F]*$/);
+    }
+    // Today (Dec 1 in Ho Chi Minh time) is a Tuesday, in English.
+    await expect(dayButton(page, "Tuesday, December 1, 2026")).toHaveAttribute("aria-current", "date");
+
+    await dayButton(page, "Thursday, December 3, 2026").click();
+    const shown = await dateField(page).inputValue();
+    expect(shown).toBe("Dec 3, 2026");
+    expect(shown).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    await expect(dateField(page)).toHaveAttribute("placeholder", "e.g. Dec 3, 2026");
+  });
+
+  test("AC-2e: the time picker is English with 24-hour digits under vi-VN", async ({ page }) => {
+    await openPinned(page);
+    await timePickerButton(page).click();
+    await expect(timeDialog(page)).toBeVisible();
+    await expect(timeDialog(page).getByText("Hour", { exact: true })).toBeVisible();
+    await expect(timeDialog(page).getByText("Minute", { exact: true })).toBeVisible();
+    for (const s of await dialogStrings(timeDialog(page))) {
+      expect(s).not.toMatch(VIET);
+      expect(s).toMatch(/^[\x00-\x7F]*$/);
+    }
+    await hourButton(page, "10").click();
+    await minuteButton(page, "30").click();
+    await expect(timeField(page)).toHaveValue("10:30");
+    await expect(timeField(page)).toHaveAttribute("placeholder", "e.g. 10:30");
+  });
+
+  test("AC-2e: the full flow under vi-VN ends with the English recap", async ({ page }) => {
+    await openPinned(page);
+    await fillWithoutWhen(page);
+    await calendarButton(page).click();
+    await dayButton(page, "Thursday, December 3, 2026").click();
+    await timePickerButton(page).click();
+    await hourButton(page, "10").click();
+    await minuteButton(page, "30").click();
+    await sendButton(page).click();
+    await expect(successPanel(page).locator("dd").nth(2)).toHaveText("Thursday 3 December, 10:30");
+    await page.getByRole("button", { name: "Make another request" }).click();
+    await dateField(page).fill("dec 3 2026");
+    await dateField(page).blur();
+    await expect(dateField(page)).toHaveValue("Dec 3, 2026");
+  });
+});
+
+test.describe("Pickers: required marks", () => {
+  const REQUIRED: [string, string][] = [
+    ["appt-name", "Full name"],
+    ["appt-phone", "Phone"],
+    ["appt-email", "Email"],
+    ["appt-service", "Service"],
+    ["appt-date", "Preferred date"],
+    ["appt-time", "Preferred time"],
+  ];
+
+  test("AC-2f: each of the six required labels shows a visible '*' (aria-hidden) at its end and its control is required", async ({
+    page,
+  }) => {
+    await page.goto("/contact");
+    for (const [id, text] of REQUIRED) {
+      const label = page.locator(`label[for='${id}']`);
+      const star = label.locator("span[aria-hidden='true']", { hasText: "*" });
+      await expect(star, id).toHaveCount(1);
+      await expect(star, id).toBeVisible();
+      await expect(star, id).toHaveText("*");
+      await expect(label, id).toContainText(text);
+      expect(((await label.textContent()) ?? "").trim().endsWith("*"), `${id}: star at the end`).toBe(true);
+      const control = page.locator(`#${id}`);
+      await expect(control, id).toHaveJSProperty("required", true);
+      await expect(control, id).toHaveAttribute("required", "");
+    }
+  });
+
+  test("AC-2f: Notes is optional: no '*' in its label and its textarea is not required", async ({ page }) => {
+    await page.goto("/contact");
+    const label = page.locator("label[for='appt-notes']");
+    await expect(label).toContainText("Notes");
+    await expect(label).toContainText("(optional)");
+    expect(((await label.textContent()) ?? "").includes("*")).toBe(false);
+    await expect(label.locator("span[aria-hidden='true']")).toHaveCount(0);
+    await expect(notesField(page)).toHaveJSProperty("required", false);
+    await expect(notesField(page)).not.toHaveAttribute("required", /.*/);
+  });
+
+  test("AC-2f: exactly six controls are required (the picker buttons are not) and there are seven stars (6 labels + the note)", async ({
+    page,
+  }) => {
+    await page.goto("/contact");
+    await expect(page.locator("form [required]")).toHaveCount(6);
+    await expect(page.locator("form button[required]")).toHaveCount(0);
+    await expect(page.locator("form span[aria-hidden='true']", { hasText: /^\*$/ })).toHaveCount(7);
+  });
+
+  test("AC-2f: the note 'Fields marked * are required.' is visible, above the first group, with an sr-only 'with an asterisk'", async ({
+    page,
+  }) => {
+    await page.goto("/contact");
+    const note = page.locator("form p", { hasText: "are required" });
+    await expect(note).toHaveCount(1);
+    await expect(note).toBeVisible();
+    await expect(note).toContainText("Fields marked");
+    await expect(note).toContainText("are required.");
+    await expect(note.locator("span[aria-hidden='true']")).toHaveText("*");
+    await expect(note.locator("span.sr-only")).toHaveText("with an asterisk");
+    const noteBox = (await note.boundingBox())!;
+    const groupBox = (await page.getByRole("group", { name: "About you" }).boundingBox())!;
+    expect(noteBox.y, "the note sits above the first fieldset").toBeLessThan(groupBox.y);
+    // The note is outside the fieldsets: the group name stays exactly "About you".
+    await expect(page.getByRole("group", { name: "About you", exact: true })).toBeVisible();
+  });
+
+  test("AC-2f: accessible names are exactly the label text (the star adds nothing)", async ({ page }) => {
+    await page.goto("/contact");
+    await expect(nameField(page)).toHaveAccessibleName("Full name");
+    await expect(phoneField(page)).toHaveAccessibleName("Phone");
+    await expect(emailField(page)).toHaveAccessibleName("Email");
+    await expect(serviceField(page)).toHaveAccessibleName("Service");
+    await expect(dateField(page)).toHaveAccessibleName("Preferred date");
+    await expect(timeField(page)).toHaveAccessibleName("Preferred time (open 9:00 to 17:00)");
+    await expect(notesField(page)).toHaveAccessibleName("Notes (optional)");
+    await expect(calendarButton(page)).toHaveAccessibleName("Open calendar");
+    await expect(timePickerButton(page)).toHaveAccessibleName("Open time picker");
+    await expect(page.getByRole("textbox", { name: "Full name", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("textbox", { name: "Preferred date", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("textbox", { name: "Preferred time (open 9:00 to 17:00)", exact: true })).toHaveCount(1);
+  });
+});
+
+test.describe("Pickers: popovers stay inside the viewport and cause no horizontal scroll", () => {
+  test.use({ timezoneId: "UTC" });
+
+  const sizes = [
+    { width: 320, height: 568 },
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ];
+
+  /**
+   * The dialog box must lie inside the viewport horizontally, and every enabled control inside it must be the element
+   * that really receives a pointer at its centre (nothing, such as the fixed chat button or the phone booking bar,
+   * covers it, and no ancestor clips it).
+   */
+  async function expectInside(page: Page, dialog: Locator, what: string) {
+    // Centre it: the popover must be usable after a normal scroll, not only when it touches the bottom edge.
+    await dialog.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    const vw = page.viewportSize()!.width;
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, `${what} left edge`).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, `${what} right edge`).toBeLessThanOrEqual(vw);
+    const h = await horizontalScroll(page);
+    expect(h.scrollWidth, `${what} open: horizontal scroll`).toBeLessThanOrEqual(h.clientWidth);
+    const covered = await dialog.evaluate((el) => {
+      const bad: string[] = [];
+      for (const b of el.querySelectorAll("button:not([disabled])")) {
+        const r = b.getBoundingClientRect();
+        if (r.width === 0) continue;
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        if (y < 0 || y > innerHeight) {
+          bad.push(`${b.getAttribute("aria-label")} is off-screen at y=${Math.round(y)}`);
+          continue;
+        }
+        const hit = document.elementFromPoint(x, y);
+        if (!hit || !(hit === b || b.contains(hit))) bad.push(`${b.getAttribute("aria-label")} is covered by ${hit?.tagName} ${hit?.getAttribute("aria-label") ?? hit?.getAttribute("data-testid") ?? hit?.textContent?.slice(0, 20)}`);
+      }
+      return bad;
+    });
+    expect(covered, `${what}: controls covered, clipped or off-screen`).toEqual([]);
+  }
+
+  for (const vp of sizes) {
+    test(`AC-2g: date popover at ${vp.width}x${vp.height}`, async ({ page }) => {
+      await page.setViewportSize(vp);
+      await openPinned(page);
+      await calendarButton(page).click();
+      await expect(calendarDialog(page)).toBeVisible();
+      await expectInside(page, calendarDialog(page), "calendar");
+      await calendarDialog(page).getByRole("button", { name: "Next month" }).click();
+      await expectInside(page, calendarDialog(page), "calendar, next month");
+    });
+
+    test(`AC-2g: time popover at ${vp.width}x${vp.height}`, async ({ page }) => {
+      await page.setViewportSize(vp);
+      await openPinned(page);
+      await timePickerButton(page).click();
+      await expect(timeDialog(page)).toBeVisible();
+      await hourButton(page, "10").click();
+      await expectInside(page, timeDialog(page), "time picker");
+    });
+
+    test(`AC-2g: date popover in the error state at ${vp.width}x${vp.height}`, async ({ page }) => {
+      await page.setViewportSize(vp);
+      await openPinned(page);
+      await sendButton(page).click();
+      await expect(banner(page)).toBeVisible();
+      await calendarButton(page).click();
+      await expect(calendarDialog(page)).toBeVisible();
+      await expectInside(page, calendarDialog(page), "calendar (error state)");
+    });
+  }
+
+  test("AC-2g: the picker buttons are at least 44 px high and wide", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPinned(page);
+    for (const b of [calendarButton(page), timePickerButton(page)]) {
+      const box = (await b.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await calendarButton(page).click();
+    for (const name of ["Previous month", "Next month"]) {
+      const box = (await calendarDialog(page).getByRole("button", { name }).boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+});
